@@ -1,12 +1,37 @@
 import { neon } from '@neondatabase/serverless'
 
-const connectionString =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.POSTGRES_PRISMA_URL
+let client = null
 
-if (!connectionString) {
-  throw new Error('DATABASE_URL não configurada na Vercel.')
+function getConnectionString() {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    ''
+  )
 }
 
-export const sql = neon(connectionString)
+function getClient() {
+  if (client) {
+    return client
+  }
+
+  const connectionString = getConnectionString()
+
+  if (!connectionString) {
+    throw new Error(
+      'Banco não conectado a este projeto Vercel: DATABASE_URL ausente.',
+    )
+  }
+
+  client = neon(connectionString)
+  return client
+}
+
+export function sql(strings, ...values) {
+  return getClient()(strings, ...values)
+}
+
+export function hasDatabaseConnection() {
+  return Boolean(getConnectionString())
+}
