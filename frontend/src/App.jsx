@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './services/api.js'
+import NewsScreen from './components/NewsScreen.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -368,6 +369,12 @@ function AppIcon({ name }) {
         <path d="M8 20v-6h8v6M3 10h18" />
       </>
     ),
+    news: (
+      <>
+        <path d="M4 5h16v14H4z" />
+        <path d="M7 8h5M7 11h10M7 14h10M7 17h7" />
+      </>
+    ),
     rotas: (
       <>
         <circle cx="6" cy="18" r="2" />
@@ -471,6 +478,7 @@ function DashboardHome({ usuario, onNavigate }) {
         <div className="module-grid">
           {[
             ['armazem', 'Armazém', 'Indicadores e rotinas do armazém'],
+            ['news', 'Armazém New', 'Notícias, comunicados e reconhecimentos'],
             ['rotas', 'Rotas', 'Acompanhamento das operações de entrega'],
             ['devolucoes', 'Devoluções', 'Controle e análise de devoluções'],
             ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
@@ -895,6 +903,7 @@ function HomeScreen({ usuario, onLogout }) {
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
     { id: 'armazem', label: 'Armazém', icon: 'armazem' },
+    { id: 'news', label: 'Armazém New', icon: 'news' },
     { id: 'rotas', label: 'Rotas', icon: 'rotas' },
     { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
@@ -904,6 +913,7 @@ function HomeScreen({ usuario, onLogout }) {
   const sectionMap = {
     painel: { title: 'Painel', description: 'Visão geral da operação.', icon: 'painel' },
     armazem: { title: 'Armazém', description: 'Indicadores, controles e rotinas do armazém.', icon: 'armazem' },
+    news: { title: 'Armazém New', description: 'Notícias, comunicados e reconhecimentos do armazém.', icon: 'news' },
     rotas: { title: 'Rotas', description: 'Acompanhamento das rotas e entregas.', icon: 'rotas' },
     devolucoes: { title: 'Devoluções', description: 'Gestão e análise das devoluções da operação.', icon: 'devolucoes' },
     usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
@@ -1051,6 +1061,8 @@ function HomeScreen({ usuario, onLogout }) {
             <DashboardHome usuario={usuario} onNavigate={navigate} />
           ) : activeSection === 'usuarios' && isAdmin ? (
             <UsersScreen currentUser={usuario} />
+          ) : activeSection === 'news' ? (
+            <NewsScreen currentUser={usuario} />
           ) : (
             <SectionPlaceholder
               title={section.title}
