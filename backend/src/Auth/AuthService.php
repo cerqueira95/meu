@@ -187,16 +187,19 @@ final class AuthService
         $tentativas = ((int) $usuario['tentativas_login']) + 1;
 
         if ($tentativas >= $maxTentativas) {
-            $stmt = $this->pdo->prepare(
+            $bloqueadoAte = (new DateTimeImmutable())
+                ->modify('+' . $tempoBloqueio . ' minutes')
+                ->format('Y-m-d H:i:s');
+
+            $this->pdo->prepare(
                 'UPDATE usuarios
                  SET tentativas_login = 0,
-                     bloqueado_ate = DATE_ADD(NOW(), INTERVAL :minutos MINUTE)
+                     bloqueado_ate = :bloqueado_ate
                  WHERE id = :id'
-            );
-
-            $stmt->bindValue(':minutos', $tempoBloqueio, PDO::PARAM_INT);
-            $stmt->bindValue(':id', (int) $usuario['id'], PDO::PARAM_INT);
-            $stmt->execute();
+            )->execute([
+                'bloqueado_ate' => $bloqueadoAte,
+                'id' => $usuario['id'],
+            ]);
 
             return;
         }
@@ -266,7 +269,7 @@ final class AuthService
             'motivo' => $motivo,
             'ip' => $ip,
             'user_agent' => $userAgent !== null
-                ? mb_substr($userAgent, 0, 500)
+                ? substr($userAgent, 0, 500)
                 : null,
         ]);
     }
