@@ -685,3 +685,112 @@ form {
     padding: 30px 24px;
   }
 }
+
+
+.quick-access-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin: -8px 0 24px;
+  padding: 12px 46px 12px 12px;
+  border: 1px solid #e2e7ed;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(20, 34, 52, 0.06);
+}
+
+.quick-access-avatar {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #172235;
+  background: #ffb000;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.quick-access-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quick-access-copy span {
+  color: #ff9f00;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.quick-access-copy strong {
+  overflow: hidden;
+  color: #1b293b;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-access-copy small {
+  color: #8b96a4;
+  font-size: 10px;
+}
+
+.quick-access-button {
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  color: #172235;
+  background: #ffb000;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.quick-access-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.quick-access-forget {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: #9aa4b1;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.quick-access-forget:hover {
+  color: #27364b;
+  background: #f3f5f7;
+}
+
+@media (max-width: 420px) {
+  .quick-access-card {
+    grid-template-columns: 40px 1fr;
+    padding-right: 38px;
+  }
+
+  .quick-access-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .quick-access-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
