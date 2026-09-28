@@ -454,34 +454,45 @@ function DashboardHome({ usuario, onNavigate }) {
 
   return (
     <>
-      <section className="dashboard-hero">
-        <div>
-          <span className="dashboard-kicker">VISÃO GERAL</span>
-          <h1>Olá, {firstName}.</h1>
-          <p>Seu espaço central para acompanhar a operação e acessar os módulos do sistema.</p>
-        </div>
-        <div className="hero-status">
-          <span className="hero-status-dot" />
-          <strong>Operação ativa</strong>
-        </div>
-      </section>
+      <section className="dashboard-overview">
+        <div className="dashboard-overview-copy">
+          <div className="dashboard-overview-eyebrow">
+            <span className="dashboard-kicker">VISÃO GERAL</span>
+            <span className="overview-status">
+              <span className="hero-status-dot" />
+              Operação ativa
+            </span>
+          </div>
 
-      <section className="dashboard-cards">
-        <article className="metric-card">
-          <span className="metric-label">Perfil</span>
-          <strong>{usuario.perfil || 'Usuário'}</strong>
-          <small>Nível de acesso atual</small>
-        </article>
-        <article className="metric-card">
-          <span className="metric-label">Cargo</span>
-          <strong>{usuario.cargo || 'Não informado'}</strong>
-          <small>Função cadastrada</small>
-        </article>
-        <article className="metric-card">
-          <span className="metric-label">Turno</span>
-          <strong>{usuario.turno || 'Não informado'}</strong>
-          <small>Jornada operacional</small>
-        </article>
+          <h1>Olá, {firstName}.</h1>
+          <p>Seu espaço para acompanhar a operação e acessar os módulos do sistema.</p>
+        </div>
+
+        <div className="dashboard-overview-info">
+          <article className="overview-info-item">
+            <span className="overview-info-icon"><AppIcon name="usuarios" /></span>
+            <div>
+              <small>Perfil</small>
+              <strong>{usuario.perfil || 'Usuário'}</strong>
+            </div>
+          </article>
+
+          <article className="overview-info-item">
+            <span className="overview-info-icon"><AppIcon name="armazem" /></span>
+            <div>
+              <small>Cargo</small>
+              <strong>{usuario.cargo || 'Não informado'}</strong>
+            </div>
+          </article>
+
+          <article className="overview-info-item">
+            <span className="overview-info-icon"><AppIcon name="rotas" /></span>
+            <div>
+              <small>Turno</small>
+              <strong>{usuario.turno || 'Não informado'}</strong>
+            </div>
+          </article>
+        </div>
       </section>
 
       <HomeNewsPreview onNavigate={onNavigate} />
