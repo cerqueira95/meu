@@ -36,6 +36,7 @@ export default async function handler(req, res) {
             c.publicacao_id,
             c.texto,
             c.criado_em,
+            c.atualizado_em,
             u.id AS usuario_id,
             u.nome AS usuario_nome,
             u.cargo AS usuario_cargo
@@ -57,6 +58,7 @@ export default async function handler(req, res) {
           id: Number(comment.id),
           texto: comment.texto,
           criado_em: comment.criado_em,
+          atualizado_em: comment.atualizado_em ?? null,
           usuario: {
             id: Number(comment.usuario_id),
             nome: comment.usuario_nome,
