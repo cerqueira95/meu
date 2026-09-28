@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS armazem_publicacoes (
     titulo VARCHAR(180) NOT NULL,
     conteudo TEXT NOT NULL,
     imagem_data TEXT,
+    imagens_data JSONB NOT NULL DEFAULT '[]'::jsonb,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -176,3 +177,10 @@ CREATE TABLE IF NOT EXISTS armazem_reacoes (
 
 CREATE INDEX IF NOT EXISTS idx_armazem_reacoes_publicacao
     ON armazem_reacoes (publicacao_id);
+
+
+UPDATE armazem_publicacoes
+SET imagens_data = jsonb_build_array(imagem_data)
+WHERE imagem_data IS NOT NULL
+  AND imagem_data <> ''
+  AND jsonb_array_length(imagens_data) = 0;
