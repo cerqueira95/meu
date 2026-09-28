@@ -1,6 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './services/api.js'
 
+const QUICK_ACCESS_KEY = 'warehouse_quick_access'
+
+function readQuickAccess() {
+  try {
+    const value = window.localStorage.getItem(QUICK_ACCESS_KEY)
+    return value ? JSON.parse(value) : null
+  } catch {
+    return null
+  }
+}
+
+function storeQuickAccess(value) {
+  try {
+    if (value) {
+      window.localStorage.setItem(QUICK_ACCESS_KEY, JSON.stringify(value))
+    } else {
+      window.localStorage.removeItem(QUICK_ACCESS_KEY)
+    }
+  } catch {
+    // O navegador pode bloquear armazenamento local em alguns modos privados.
+  }
+}
+
 function onlyDigits(value) {
   return String(value ?? '').replace(/\D/g, '').slice(0, 11)
 }
@@ -46,6 +69,7 @@ function LoginScreen({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [quickAccess, setQuickAccess] = useState(() => readQuickAccess())
 
   const cpfValido = useMemo(() => onlyDigits(cpf).length === 11, [cpf])
 
@@ -66,12 +90,55 @@ function LoginScreen({ onLogin }) {
         senha,
       })
 
+      if (data.quickAccess?.token) {
+        const remembered = {
+          token: data.quickAccess.token,
+          nome: data.quickAccess.nome,
+          cpf: data.quickAccess.cpf,
+        }
+        storeQuickAccess(remembered)
+        setQuickAccess(remembered)
+      }
+
       onLogin(data.usuario)
     } catch (requestError) {
       setError(requestError.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleQuickLogin() {
+    if (!quickAccess?.token) {
+      return
+    }
+
+    setError('')
+    setLoading(true)
+
+    try {
+      const data = await api.post('/api/auth/quick-login', {
+        token: quickAccess.token,
+      })
+
+      onLogin(data.usuario)
+    } catch (requestError) {
+      storeQuickAccess(null)
+      setQuickAccess(null)
+      setError(
+        requestError.status === 401
+          ? 'O acesso rápido expirou. Entre novamente com CPF e senha.'
+          : requestError.message,
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function forgetQuickAccess() {
+    storeQuickAccess(null)
+    setQuickAccess(null)
+    setError('')
   }
 
   return (
@@ -154,6 +221,36 @@ function LoginScreen({ onLogin }) {
             <h2>Acesse sua conta</h2>
             <p>Entre com seu CPF e senha para continuar.</p>
           </div>
+
+          {quickAccess && (
+            <div className="quick-access-card">
+              <div className="quick-access-avatar" aria-hidden="true">
+                {String(quickAccess.nome || 'U').trim().charAt(0).toUpperCase()}
+              </div>
+              <div className="quick-access-copy">
+                <span>Acesso rápido</span>
+                <strong>{quickAccess.nome || 'Usuário'}</strong>
+                <small>{quickAccess.cpf || 'Dispositivo reconhecido'}</small>
+              </div>
+              <button
+                className="quick-access-button"
+                type="button"
+                onClick={handleQuickLogin}
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : 'Acessar'}
+              </button>
+              <button
+                className="quick-access-forget"
+                type="button"
+                onClick={forgetQuickAccess}
+                disabled={loading}
+                aria-label="Remover acesso rápido deste navegador"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} noValidate>
             <label className="field-label" htmlFor="cpf">
