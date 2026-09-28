@@ -1,0 +1,197 @@
+import bcrypt from 'bcryptjs'
+import { sql } from '../_lib/db.js'
+import { getSessionUser } from '../_lib/session.js'
+
+const PROFILES = ['ADM', 'Operador', 'Ajudante', 'Conferente']
+const STATUSES = ['ativo', 'inativo']
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST')
+    return res.status(405).json({
+      status: 'error',
+      message: 'Método não permitido.',
+    })
+  }
+
+  const admin = await requireAdmin(req, res)
+  if (!admin) return
+
+  try {
+    const id = Number(req.body?.id)
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ status: 'error', message: 'Usuário inválido.' })
+    }
+
+    const payload = normalizePayload(req.body)
+    const validation = validatePayload(payload)
+
+    if (validation) {
+      return res.status(400).json({ status: 'error', message: validation })
+    }
+
+    if (
+      Number(admin.id) === id &&
+      (payload.status !== 'ativo' || payload.perfil !== 'ADM')
+    ) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Você não pode remover seu próprio acesso de administrador.',
+      })
+    }
+
+    let rows
+
+    if (payload.senha) {
+      const senhaHash = await bcrypt.hash(payload.senha, 12)
+
+      rows = await sql`
+        UPDATE usuarios
+        SET nome = ${payload.nome},
+            cpf = ${payload.cpf},
+            matricula = ${payload.matricula},
+            email = ${payload.email},
+            cargo = ${payload.cargo},
+            turno = ${payload.turno},
+            perfil = ${payload.perfil},
+            status = ${payload.status},
+            senha_hash = ${senhaHash},
+            tentativas_login = 0,
+            bloqueado_ate = NULL,
+            atualizado_em = NOW()
+        WHERE id = ${id}
+        RETURNING id, nome, cpf, matricula, email, cargo, turno, perfil, status, ultimo_login, criado_em
+      `
+
+      await sql`DELETE FROM sessoes WHERE usuario_id = ${id}`
+      await sql`UPDATE acessos_rapidos SET revogado_em = NOW() WHERE usuario_id = ${id} AND revogado_em IS NULL`
+    } else {
+      rows = await sql`
+        UPDATE usuarios
+        SET nome = ${payload.nome},
+            cpf = ${payload.cpf},
+            matricula = ${payload.matricula},
+            email = ${payload.email},
+            cargo = ${payload.cargo},
+            turno = ${payload.turno},
+            perfil = ${payload.perfil},
+            status = ${payload.status},
+            atualizado_em = NOW()
+        WHERE id = ${id}
+        RETURNING id, nome, cpf, matricula, email, cargo, turno, perfil, status, ultimo_login, criado_em
+      `
+    }
+
+    if (!rows[0]) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Funcionário não encontrado.',
+      })
+    }
+
+    if (payload.status !== 'ativo') {
+      await sql`DELETE FROM sessoes WHERE usuario_id = ${id}`
+      await sql`UPDATE acessos_rapidos SET revogado_em = NOW() WHERE usuario_id = ${id} AND revogado_em IS NULL`
+    }
+
+    return res.status(200).json({
+      status: 'ok',
+      message: 'Funcionário atualizado com sucesso.',
+      usuario: serializeUser(rows[0]),
+    })
+  } catch (error) {
+    if (error?.code === '23505') {
+      return res.status(409).json({
+        status: 'error',
+        message: 'CPF, matrícula ou e-mail já cadastrado.',
+      })
+    }
+
+    console.error('users_update_error', error)
+    return res.status(500).json({
+      status: 'error',
+      message: 'Não foi possível atualizar o funcionário.',
+    })
+  }
+}
+
+async function requireAdmin(req, res) {
+  try {
+    const usuario = await getSessionUser(req)
+
+    if (!usuario) {
+      res.status(401).json({ status: 'error', message: 'Sessão não autenticada.' })
+      return null
+    }
+
+    if (String(usuario.perfil || '').toUpperCase() !== 'ADM') {
+      res.status(403).json({
+        status: 'error',
+        message: 'Apenas administradores podem gerenciar usuários.',
+      })
+      return null
+    }
+
+    return usuario
+  } catch (error) {
+    console.error('users_auth_error', error)
+    res.status(500).json({
+      status: 'error',
+      message: 'Não foi possível validar seu acesso.',
+    })
+    return null
+  }
+}
+
+function normalizePayload(body = {}) {
+  return {
+    nome: String(body.nome || '').trim(),
+    cpf: onlyDigits(body.cpf),
+    matricula: nullable(body.matricula),
+    email: nullable(body.email)?.toLowerCase() || null,
+    cargo: nullable(body.cargo),
+    turno: nullable(body.turno),
+    perfil: String(body.perfil || '').trim(),
+    status: String(body.status || 'ativo').trim().toLowerCase(),
+    senha: String(body.senha || ''),
+  }
+}
+
+function validatePayload(payload) {
+  if (payload.nome.length < 2) return 'Informe o nome do funcionário.'
+  if (payload.cpf.length !== 11) return 'Informe um CPF válido.'
+  if (!PROFILES.includes(payload.perfil)) return 'Selecione um perfil válido.'
+  if (!STATUSES.includes(payload.status)) return 'Selecione um status válido.'
+  if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+    return 'Informe um e-mail válido.'
+  }
+  if (payload.senha && payload.senha.length < 6) {
+    return 'A nova senha deve ter pelo menos 6 caracteres.'
+  }
+  return null
+}
+
+function serializeUser(usuario) {
+  return {
+    id: Number(usuario.id),
+    nome: usuario.nome,
+    cpf: usuario.cpf,
+    matricula: usuario.matricula ?? null,
+    email: usuario.email ?? null,
+    cargo: usuario.cargo ?? null,
+    turno: usuario.turno ?? null,
+    perfil: usuario.perfil,
+    status: usuario.status,
+    ultimo_login: usuario.ultimo_login ?? null,
+    criado_em: usuario.criado_em ?? null,
+  }
+}
+
+function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 11)
+}
+
+function nullable(value) {
+  const text = String(value || '').trim()
+  return text || null
+}
