@@ -1,6 +1,10 @@
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
 
+const MAX_IMAGES = 4
+const MAX_IMAGE_LENGTH = 900_000
+const MAX_TOTAL_IMAGE_LENGTH = 3_200_000
+
 export default async function handler(req, res) {
   const usuario = await requireUser(req, res)
   if (!usuario) return
@@ -14,6 +18,7 @@ export default async function handler(req, res) {
             p.titulo,
             p.conteudo,
             p.imagem_data,
+            p.imagens_data,
             p.criado_em,
             p.atualizado_em,
             u.id AS autor_id,
@@ -84,27 +89,32 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         status: 'ok',
-        publicacoes: posts.map((post) => ({
-          id: Number(post.id),
-          titulo: post.titulo,
-          conteudo: post.conteudo,
-          imagem_data: post.imagem_data ?? null,
-          criado_em: post.criado_em,
-          atualizado_em: post.atualizado_em,
-          autor: {
-            id: Number(post.autor_id),
-            nome: post.autor_nome,
-            cargo: post.autor_cargo ?? null,
-            perfil: post.autor_perfil,
-          },
-          comentarios: commentsByPost.get(Number(post.id)) || [],
-          reacoes: reactionsByPost.get(Number(post.id)) || {
-            curtir: 0,
-            parabens: 0,
-            importante: 0,
-            minha: null,
-          },
-        })),
+        publicacoes: posts.map((post) => {
+          const imagens = normalizeStoredImages(post.imagens_data, post.imagem_data)
+
+          return {
+            id: Number(post.id),
+            titulo: post.titulo,
+            conteudo: post.conteudo,
+            imagens_data: imagens,
+            imagem_data: imagens[0] ?? null,
+            criado_em: post.criado_em,
+            atualizado_em: post.atualizado_em,
+            autor: {
+              id: Number(post.autor_id),
+              nome: post.autor_nome,
+              cargo: post.autor_cargo ?? null,
+              perfil: post.autor_perfil,
+            },
+            comentarios: commentsByPost.get(Number(post.id)) || [],
+            reacoes: reactionsByPost.get(Number(post.id)) || {
+              curtir: 0,
+              parabens: 0,
+              importante: 0,
+              minha: null,
+            },
+          }
+        }),
       })
     } catch (error) {
       console.error('news_list_error', error)
@@ -126,7 +136,7 @@ export default async function handler(req, res) {
     try {
       const titulo = String(req.body?.titulo || '').trim()
       const conteudo = String(req.body?.conteudo || '').trim()
-      const imagemData = normalizeImage(req.body?.imagem_data)
+      const imagensData = normalizeImages(req.body?.imagens_data)
 
       if (titulo.length < 3 || titulo.length > 180) {
         return res.status(400).json({
@@ -147,13 +157,15 @@ export default async function handler(req, res) {
           autor_id,
           titulo,
           conteudo,
-          imagem_data
+          imagem_data,
+          imagens_data
         )
         VALUES (
           ${usuario.id},
           ${titulo},
           ${conteudo},
-          ${imagemData}
+          ${imagensData[0] ?? null},
+          ${JSON.stringify(imagensData)}::jsonb
         )
         RETURNING id
       `
@@ -164,6 +176,27 @@ export default async function handler(req, res) {
         id: Number(rows[0].id),
       })
     } catch (error) {
+      if (error?.message === 'TOO_MANY_IMAGES') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Você pode adicionar no máximo 4 fotos por publicação.',
+        })
+      }
+
+      if (error?.message === 'INVALID_IMAGE') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Uma das fotos enviadas é inválida.',
+        })
+      }
+
+      if (error?.message === 'IMAGE_TOO_LARGE') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'As fotos ficaram muito grandes. Tente imagens menores.',
+        })
+      }
+
       console.error('news_create_error', error)
       return res.status(500).json({
         status: 'error',
@@ -202,18 +235,44 @@ async function requireUser(req, res) {
   }
 }
 
-function normalizeImage(value) {
-  const image = String(value || '').trim()
+function normalizeImages(value) {
+  if (!value) return []
 
-  if (!image) return null
+  const items = Array.isArray(value) ? value : []
 
-  if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(image)) {
-    throw new Error('INVALID_IMAGE')
+  if (items.length > MAX_IMAGES) {
+    throw new Error('TOO_MANY_IMAGES')
   }
 
-  if (image.length > 3_500_000) {
+  let totalLength = 0
+  const normalized = items.map((item) => {
+    const image = String(item || '').trim()
+
+    if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(image)) {
+      throw new Error('INVALID_IMAGE')
+    }
+
+    if (image.length > MAX_IMAGE_LENGTH) {
+      throw new Error('IMAGE_TOO_LARGE')
+    }
+
+    totalLength += image.length
+    return image
+  })
+
+  if (totalLength > MAX_TOTAL_IMAGE_LENGTH) {
     throw new Error('IMAGE_TOO_LARGE')
   }
 
-  return image
+  return normalized
+}
+
+function normalizeStoredImages(value, fallback) {
+  const items = Array.isArray(value) ? value.filter(Boolean) : []
+
+  if (items.length > 0) {
+    return items.slice(0, MAX_IMAGES)
+  }
+
+  return fallback ? [fallback] : []
 }
