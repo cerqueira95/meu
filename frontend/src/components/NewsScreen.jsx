@@ -23,6 +23,15 @@ function formatDateTime(value) {
   }).format(date)
 }
 
+function wasEdited(createdAt, updatedAt) {
+  if (!createdAt || !updatedAt) return false
+
+  const created = new Date(createdAt).getTime()
+  const updated = new Date(updatedAt).getTime()
+
+  return Number.isFinite(created) && Number.isFinite(updated) && updated - created > 1500
+}
+
 function initials(name) {
   const words = String(name || 'U')
     .trim()
@@ -82,6 +91,25 @@ async function compressImage(file) {
   return result
 }
 
+async function processSelectedImages(files, currentCount) {
+  const list = Array.from(files || [])
+  const remaining = MAX_IMAGES - currentCount
+
+  if (list.length === 0) return []
+
+  if (remaining <= 0 || list.length > remaining) {
+    throw new Error(`Você pode adicionar no máximo ${MAX_IMAGES} fotos por publicação.`)
+  }
+
+  const compressed = []
+
+  for (const file of list) {
+    compressed.push(await compressImage(file))
+  }
+
+  return compressed
+}
+
 function ReactionSummary({ post }) {
   const total =
     Number(post.reacoes?.curtir || 0) +
@@ -127,6 +155,9 @@ function PhotoGrid({ images, title }) {
             aria-label={`Abrir foto ${index + 1} de ${count}`}
           >
             <img src={image} alt={`${title} — foto ${index + 1}`} />
+            {count > 1 && index === count - 1 && (
+              <span className="news-expand-hint">Ampliar</span>
+            )}
           </button>
         ))}
       </div>
@@ -179,9 +210,100 @@ function PhotoGrid({ images, title }) {
   )
 }
 
-function NewsPost({ post, currentUser, onReact, onComment }) {
+function CommentItem({ item, isAdmin, onManage }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(item.texto)
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    const value = text.trim()
+
+    if (!value || value === item.texto) {
+      setText(item.texto)
+      setEditing(false)
+      return
+    }
+
+    setSaving(true)
+    try {
+      await onManage(item.id, 'edit', value)
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm('Excluir este comentário?')) return
+
+    setSaving(true)
+    try {
+      await onManage(item.id, 'delete')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="news-comment">
+      <div className="news-comment-avatar">{initials(item.usuario.nome)}</div>
+      <div className="news-comment-bubble">
+        <div className="news-comment-meta">
+          <div>
+            <strong>{item.usuario.nome}</strong>
+            <span>
+              {formatDateTime(item.criado_em)}
+              {wasEdited(item.criado_em, item.atualizado_em) ? ' • editado' : ''}
+            </span>
+          </div>
+
+          {isAdmin && !editing && (
+            <div className="news-comment-admin-actions">
+              <button type="button" onClick={() => setEditing(true)}>Editar</button>
+              <button type="button" className="danger" onClick={remove} disabled={saving}>Excluir</button>
+            </div>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="news-comment-edit">
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              maxLength={1000}
+              disabled={saving}
+              autoFocus
+            />
+            <div>
+              <button type="button" onClick={() => { setText(item.texto); setEditing(false) }} disabled={saving}>
+                Cancelar
+              </button>
+              <button type="button" className="save" onClick={save} disabled={saving || !text.trim()}>
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p>{item.texto}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function NewsPost({
+  post,
+  currentUser,
+  isAdmin,
+  onReact,
+  onComment,
+  onEditPost,
+  onDeletePost,
+  onManageComment,
+}) {
   const [comment, setComment] = useState('')
   const [sendingComment, setSendingComment] = useState(false)
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false)
 
   async function submitComment(event) {
     event.preventDefault()
@@ -199,6 +321,16 @@ function NewsPost({ post, currentUser, onReact, onComment }) {
     }
   }
 
+  async function removePost() {
+    setAdminMenuOpen(false)
+
+    if (!window.confirm('Excluir esta publicação? Os comentários e reações também serão removidos.')) {
+      return
+    }
+
+    await onDeletePost(post.id)
+  }
+
   const images = Array.isArray(post.imagens_data)
     ? post.imagens_data
     : post.imagem_data
@@ -212,9 +344,45 @@ function NewsPost({ post, currentUser, onReact, onComment }) {
         <div className="news-author-copy">
           <strong>{post.autor.nome}</strong>
           <span>{post.autor.cargo || post.autor.perfil || 'Equipe do armazém'}</span>
-          <small>{formatDateTime(post.criado_em)}</small>
+          <small>
+            {formatDateTime(post.criado_em)}
+            {wasEdited(post.criado_em, post.atualizado_em) ? ' • editado' : ''}
+          </small>
         </div>
-        <span className="news-published-badge">Publicado</span>
+
+        <div className="news-post-header-actions">
+          <span className="news-published-badge">Publicado</span>
+
+          {isAdmin && (
+            <div className="news-admin-menu-wrap">
+              <button
+                className="news-admin-menu-button"
+                type="button"
+                onClick={() => setAdminMenuOpen((current) => !current)}
+                aria-label="Opções da publicação"
+              >
+                •••
+              </button>
+
+              {adminMenuOpen && (
+                <div className="news-admin-menu">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminMenuOpen(false)
+                      onEditPost(post)
+                    }}
+                  >
+                    Editar publicação
+                  </button>
+                  <button type="button" className="danger" onClick={removePost}>
+                    Excluir publicação
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="news-post-body">
@@ -249,16 +417,12 @@ function NewsPost({ post, currentUser, onReact, onComment }) {
       {post.comentarios.length > 0 && (
         <div className="news-comments">
           {post.comentarios.map((item) => (
-            <div className="news-comment" key={item.id}>
-              <div className="news-comment-avatar">{initials(item.usuario.nome)}</div>
-              <div className="news-comment-bubble">
-                <div className="news-comment-meta">
-                  <strong>{item.usuario.nome}</strong>
-                  <span>{formatDateTime(item.criado_em)}</span>
-                </div>
-                <p>{item.texto}</p>
-              </div>
-            </div>
+            <CommentItem
+              key={item.id}
+              item={item}
+              isAdmin={isAdmin}
+              onManage={onManageComment}
+            />
           ))}
         </div>
       )}
@@ -282,39 +446,38 @@ function NewsPost({ post, currentUser, onReact, onComment }) {
   )
 }
 
-function AdminComposer({ currentUser, onPublished }) {
+function PostEditor({
+  mode,
+  currentUser,
+  initialPost = null,
+  onCancel,
+  onSaved,
+}) {
   const fileInputRef = useRef(null)
-  const [open, setOpen] = useState(false)
-  const [titulo, setTitulo] = useState('')
-  const [conteudo, setConteudo] = useState('')
-  const [imagens, setImagens] = useState([])
+  const [titulo, setTitulo] = useState(initialPost?.titulo || '')
+  const [conteudo, setConteudo] = useState(initialPost?.conteudo || '')
+  const [imagens, setImagens] = useState(
+    Array.isArray(initialPost?.imagens_data)
+      ? initialPost.imagens_data
+      : initialPost?.imagem_data
+        ? [initialPost.imagem_data]
+        : [],
+  )
   const [processingImage, setProcessingImage] = useState(false)
-  const [publishing, setPublishing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   async function chooseImages(event) {
-    const files = Array.from(event.target.files || [])
+    const files = event.target.files
     event.target.value = ''
 
-    if (files.length === 0) return
-
-    const remaining = MAX_IMAGES - imagens.length
-
-    if (remaining <= 0 || files.length > remaining) {
-      setError(`Você pode adicionar no máximo ${MAX_IMAGES} fotos por publicação.`)
-      return
-    }
+    if (!files?.length) return
 
     setError('')
     setProcessingImage(true)
 
     try {
-      const compressed = []
-
-      for (const file of files) {
-        compressed.push(await compressImage(file))
-      }
-
+      const compressed = await processSelectedImages(files, imagens.length)
       setImagens((current) => [...current, ...compressed].slice(0, MAX_IMAGES))
     } catch (imageError) {
       setError(imageError.message)
@@ -327,7 +490,7 @@ function AdminComposer({ currentUser, onPublished }) {
     setImagens((current) => current.filter((_, itemIndex) => itemIndex !== index))
   }
 
-  async function publish(event) {
+  async function submit(event) {
     event.preventDefault()
     setError('')
 
@@ -336,52 +499,59 @@ function AdminComposer({ currentUser, onPublished }) {
       return
     }
 
-    setPublishing(true)
+    setSaving(true)
 
     try {
-      await api.post('/api/news', {
-        titulo: titulo.trim(),
-        conteudo: conteudo.trim(),
-        imagens_data: imagens,
-      })
+      if (mode === 'edit') {
+        await api.post('/api/news/manage-post', {
+          id: initialPost.id,
+          action: 'edit',
+          titulo: titulo.trim(),
+          conteudo: conteudo.trim(),
+          imagens_data: imagens,
+        })
+      } else {
+        await api.post('/api/news', {
+          titulo: titulo.trim(),
+          conteudo: conteudo.trim(),
+          imagens_data: imagens,
+        })
+      }
 
-      setTitulo('')
-      setConteudo('')
-      setImagens([])
-      setOpen(false)
-      await onPublished()
+      await onSaved()
     } catch (requestError) {
       setError(requestError.message)
     } finally {
-      setPublishing(false)
+      setSaving(false)
     }
   }
 
-  function closeComposer() {
-    if (publishing || processingImage) return
-    setOpen(false)
-  }
-
-  if (!open) {
-    return (
-      <button className="news-create-trigger" type="button" onClick={() => setOpen(true)}>
-        <div className="news-author-avatar admin">{initials(currentUser.nome)}</div>
-        <span>Compartilhe uma notícia, resultado ou comunicado...</span>
-        <strong>+ Nova publicação</strong>
-      </button>
-    )
-  }
-
   return (
-    <form className="news-composer" onSubmit={publish}>
+    <form className={mode === 'edit' ? 'news-edit-modal' : 'news-composer'} onSubmit={submit}>
       <div className="news-composer-heading">
         <div>
-          <span className="dashboard-kicker">PUBLICAÇÃO DO ADM</span>
-          <h2>Nova publicação</h2>
+          <span className="dashboard-kicker">
+            {mode === 'edit' ? 'EDITAR PUBLICAÇÃO' : 'PUBLICAÇÃO DO ADM'}
+          </span>
+          <h2>{mode === 'edit' ? 'Editar publicação' : 'Nova publicação'}</h2>
         </div>
-        <button className="news-close-composer" type="button" onClick={closeComposer} aria-label="Fechar">
+        <button
+          className="news-close-composer"
+          type="button"
+          onClick={onCancel}
+          aria-label="Fechar"
+          disabled={saving || processingImage}
+        >
           ×
         </button>
+      </div>
+
+      <div className="news-editor-author">
+        <div className="news-author-avatar admin">{initials(currentUser.nome)}</div>
+        <div>
+          <strong>{currentUser.nome}</strong>
+          <span>{currentUser.cargo || currentUser.perfil}</span>
+        </div>
       </div>
 
       <label className="news-field">
@@ -391,7 +561,7 @@ function AdminComposer({ currentUser, onPublished }) {
           onChange={(event) => setTitulo(event.target.value)}
           placeholder="Ex.: Fechamento do mês com novo recorde"
           maxLength={180}
-          disabled={publishing}
+          disabled={saving}
         />
       </label>
 
@@ -400,9 +570,9 @@ function AdminComposer({ currentUser, onPublished }) {
         <textarea
           value={conteudo}
           onChange={(event) => setConteudo(event.target.value)}
-          placeholder="Conte a novidade para o time. Você pode escrever textos grandes, comunicados, reconhecimentos e atualizações da operação."
+          placeholder="Conte a novidade para o time..."
           maxLength={20000}
-          disabled={publishing}
+          disabled={saving}
         />
         <small>{conteudo.length.toLocaleString('pt-BR')} / 20.000 caracteres</small>
       </label>
@@ -441,7 +611,7 @@ function AdminComposer({ currentUser, onPublished }) {
           className="news-photo-button"
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={processingImage || publishing || imagens.length >= MAX_IMAGES}
+          disabled={processingImage || saving || imagens.length >= MAX_IMAGES}
         >
           <span>▣</span>
           {processingImage
@@ -451,19 +621,45 @@ function AdminComposer({ currentUser, onPublished }) {
               : 'Adicionar fotos'}
         </button>
 
-        <span className="news-photo-limit">
-          Até {MAX_IMAGES} fotos por publicação
-        </span>
+        <span className="news-photo-limit">Até {MAX_IMAGES} fotos por publicação</span>
 
         <button
           className="primary-action-button"
           type="submit"
-          disabled={publishing || processingImage}
+          disabled={saving || processingImage}
         >
-          {publishing ? 'Publicando...' : 'Publicar agora'}
+          {saving
+            ? mode === 'edit' ? 'Salvando...' : 'Publicando...'
+            : mode === 'edit' ? 'Salvar alterações' : 'Publicar agora'}
         </button>
       </div>
     </form>
+  )
+}
+
+function AdminComposer({ currentUser, onPublished }) {
+  const [open, setOpen] = useState(false)
+
+  if (!open) {
+    return (
+      <button className="news-create-trigger" type="button" onClick={() => setOpen(true)}>
+        <div className="news-author-avatar admin">{initials(currentUser.nome)}</div>
+        <span>Compartilhe uma notícia, resultado ou comunicado...</span>
+        <strong>+ Nova publicação</strong>
+      </button>
+    )
+  }
+
+  return (
+    <PostEditor
+      mode="create"
+      currentUser={currentUser}
+      onCancel={() => setOpen(false)}
+      onSaved={async () => {
+        setOpen(false)
+        await onPublished()
+      }}
+    />
   )
 }
 
@@ -471,6 +667,7 @@ export default function NewsScreen({ currentUser }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [editingPost, setEditingPost] = useState(null)
   const isAdmin = String(currentUser.perfil || '').toUpperCase() === 'ADM'
 
   const totalComments = useMemo(
@@ -525,6 +722,36 @@ export default function NewsScreen({ currentUser }) {
     }
   }
 
+  async function deletePost(id) {
+    setError('')
+
+    try {
+      await api.post('/api/news/manage-post', {
+        id,
+        action: 'delete',
+      })
+      await loadPosts({ quiet: true })
+    } catch (requestError) {
+      setError(requestError.message)
+    }
+  }
+
+  async function manageComment(id, action, text = '') {
+    setError('')
+
+    try {
+      await api.post('/api/news/manage-comment', {
+        id,
+        action,
+        texto: text,
+      })
+      await loadPosts({ quiet: true })
+    } catch (requestError) {
+      setError(requestError.message)
+      throw requestError
+    }
+  }
+
   return (
     <section className="news-page">
       <div className="news-page-header">
@@ -568,8 +795,12 @@ export default function NewsScreen({ currentUser }) {
                 key={post.id}
                 post={post}
                 currentUser={currentUser}
+                isAdmin={isAdmin}
                 onReact={react}
                 onComment={comment}
+                onEditPost={setEditingPost}
+                onDeletePost={deletePost}
+                onManageComment={manageComment}
               />
             ))
           )}
@@ -591,8 +822,31 @@ export default function NewsScreen({ currentUser }) {
             <span>●</span>
             <p>Você pode publicar até 4 fotos. Todos podem reagir e comentar.</p>
           </div>
+          {isAdmin && (
+            <div className="news-side-rule">
+              <span>●</span>
+              <p>Como ADM, você pode editar ou excluir publicações e comentários.</p>
+            </div>
+          )}
         </aside>
       </div>
+
+      {editingPost && (
+        <div className="news-edit-backdrop" role="presentation" onMouseDown={() => setEditingPost(null)}>
+          <div className="news-edit-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+            <PostEditor
+              mode="edit"
+              currentUser={currentUser}
+              initialPost={editingPost}
+              onCancel={() => setEditingPost(null)}
+              onSaved={async () => {
+                setEditingPost(null)
+                await loadPosts({ quiet: true })
+              }}
+            />
+          </div>
+        </div>
+      )}
     </section>
   )
 }
