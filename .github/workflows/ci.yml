@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  frontend:
+  app:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,23 +27,5 @@ jobs:
       - name: Build
         run: npm run build
 
-  backend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.4"
-
-      - name: Composer install
-        run: composer install --no-interaction --prefer-dist
-
-      - name: PHP syntax check
-        run: find public src -name "*.php" -print0 | xargs -0 -n1 php -l
+      - name: Check server functions
+        run: node --check api/health.js && node --check api/auth/login.js && node --check api/auth/me.js && node --check api/auth/logout.js && node --check api/_lib/db.js && node --check api/_lib/session.js
