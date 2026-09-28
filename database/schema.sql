@@ -107,3 +107,24 @@ DO UPDATE SET
     cargo = EXCLUDED.cargo,
     perfil = EXCLUDED.perfil,
     status = EXCLUDED.status;
+
+
+CREATE TABLE IF NOT EXISTS acessos_rapidos (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL REFERENCES usuarios(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    user_agent VARCHAR(500),
+    ip VARCHAR(45),
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ultimo_uso_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expira_em TIMESTAMPTZ NOT NULL,
+    revogado_em TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_acessos_rapidos_usuario
+    ON acessos_rapidos (usuario_id);
+
+CREATE INDEX IF NOT EXISTS idx_acessos_rapidos_expira
+    ON acessos_rapidos (expira_em);
