@@ -1,4 +1,4 @@
-import { sql } from './_lib/db.js'
+import { hasDatabaseConnection, sql } from './_lib/db.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -9,8 +9,16 @@ export default async function handler(req, res) {
     })
   }
 
+  if (!hasDatabaseConnection()) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'Banco Neon ainda não está conectado ao projeto warehouse.',
+      database: 'not_configured',
+    })
+  }
+
   try {
-    const result = await sql\`SELECT NOW() AS now\`
+    const result = await sql`SELECT NOW() AS now`
 
     return res.status(200).json({
       status: 'ok',
