@@ -3,6 +3,7 @@ const baseUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -30,7 +31,7 @@ export const api = {
     })
   },
 
-  post(path, data, options = {}) {
+  post(path, data = {}, options = {}) {
     return request(path, {
       ...options,
       method: 'POST',
