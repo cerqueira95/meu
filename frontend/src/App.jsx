@@ -421,7 +421,7 @@ function AppIcon({ name }) {
   )
 }
 
-function DashboardHome({ usuario }) {
+function DashboardHome({ usuario, onNavigate }) {
   const firstName = String(usuario.nome || 'Usuário').trim().split(' ')[0]
 
   return (
@@ -473,22 +473,401 @@ function DashboardHome({ usuario }) {
             ['armazem', 'Armazém', 'Indicadores e rotinas do armazém'],
             ['rotas', 'Rotas', 'Acompanhamento das operações de entrega'],
             ['devolucoes', 'Devoluções', 'Controle e análise de devoluções'],
-            ['usuarios', 'Usuários', 'Perfis, acessos e permissões'],
+            ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
+              ? [['usuarios', 'Usuários', 'Perfis, acessos e permissões']]
+              : []),
             ['relatorios', 'Relatórios', 'Indicadores e exportações'],
-            ['configuracoes', 'Configurações', 'Preferências e parâmetros do sistema'],
+            ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
+              ? [['configuracoes', 'Configurações', 'Preferências e parâmetros do sistema']]
+              : []),
           ].map(([icon, title, text]) => (
-            <article className="module-card" key={title}>
+            <button className="module-card" type="button" key={title} onClick={() => onNavigate?.(icon)}>
               <span className="module-icon"><AppIcon name={icon} /></span>
               <div>
                 <h3>{title}</h3>
                 <p>{text}</p>
               </div>
               <span className="module-arrow">→</span>
-            </article>
+            </button>
           ))}
         </div>
       </section>
     </>
+  )
+}
+
+function UsersScreen({ currentUser }) {
+  const emptyForm = {
+    nome: '',
+    cpf: '',
+    matricula: '',
+    email: '',
+    cargo: '',
+    turno: '',
+    perfil: 'Operador',
+    status: 'ativo',
+    senha: '',
+  }
+
+  const [usuarios, setUsuarios] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [search, setSearch] = useState('')
+  const [profileFilter, setProfileFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(emptyForm)
+
+  const profiles = ['ADM', 'Operador', 'Ajudante', 'Conferente']
+
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  async function loadUsers() {
+    setLoading(true)
+    setError('')
+
+    try {
+      const data = await api.get('/api/users')
+      setUsuarios(data.usuarios || [])
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function openNew() {
+    setEditing(null)
+    setForm(emptyForm)
+    setError('')
+    setSuccess('')
+    setModalOpen(true)
+  }
+
+  function openEdit(user) {
+    setEditing(user)
+    setForm({
+      nome: user.nome || '',
+      cpf: formatCpf(user.cpf || ''),
+      matricula: user.matricula || '',
+      email: user.email || '',
+      cargo: user.cargo || '',
+      turno: user.turno || '',
+      perfil: user.perfil || 'Operador',
+      status: user.status || 'ativo',
+      senha: '',
+    })
+    setError('')
+    setSuccess('')
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    if (saving) return
+    setModalOpen(false)
+    setEditing(null)
+    setForm(emptyForm)
+  }
+
+  function updateForm(field, value) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  async function saveUser(event) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const payload = {
+        ...form,
+        cpf: onlyDigits(form.cpf),
+      }
+
+      const data = editing
+        ? await api.post('/api/users/update', { ...payload, id: editing.id })
+        : await api.post('/api/users', payload)
+
+      setSuccess(data.message)
+      setModalOpen(false)
+      await loadUsers()
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleStatus(user) {
+    const nextStatus = user.status === 'ativo' ? 'inativo' : 'ativo'
+    setError('')
+    setSuccess('')
+
+    try {
+      const data = await api.post('/api/users/update', {
+        id: user.id,
+        nome: user.nome,
+        cpf: user.cpf,
+        matricula: user.matricula || '',
+        email: user.email || '',
+        cargo: user.cargo || '',
+        turno: user.turno || '',
+        perfil: user.perfil,
+        status: nextStatus,
+        senha: '',
+      })
+      setSuccess(data.message)
+      await loadUsers()
+    } catch (requestError) {
+      setError(requestError.message)
+    }
+  }
+
+  const filteredUsers = usuarios.filter((user) => {
+    const text = search.trim().toLowerCase()
+    const matchesText =
+      !text ||
+      [user.nome, user.cpf, user.matricula, user.cargo, user.email]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(text))
+
+    const matchesProfile = !profileFilter || user.perfil === profileFilter
+    const matchesStatus = !statusFilter || user.status === statusFilter
+
+    return matchesText && matchesProfile && matchesStatus
+  })
+
+  const activeCount = usuarios.filter((user) => user.status === 'ativo').length
+  const adminCount = usuarios.filter((user) => user.perfil === 'ADM').length
+
+  return (
+    <section className="users-page">
+      <div className="users-header">
+        <div>
+          <span className="dashboard-kicker">GESTÃO DE ACESSOS</span>
+          <h1>Usuários</h1>
+          <p>Cadastre funcionários, edite dados e controle perfis de acesso.</p>
+        </div>
+        <button className="primary-action-button" type="button" onClick={openNew}>
+          <span>+</span>
+          Novo funcionário
+        </button>
+      </div>
+
+      <div className="users-summary">
+        <article>
+          <span>Total</span>
+          <strong>{usuarios.length}</strong>
+          <small>funcionários cadastrados</small>
+        </article>
+        <article>
+          <span>Ativos</span>
+          <strong>{activeCount}</strong>
+          <small>com acesso liberado</small>
+        </article>
+        <article>
+          <span>Administradores</span>
+          <strong>{adminCount}</strong>
+          <small>perfil geral do sistema</small>
+        </article>
+      </div>
+
+      <div className="users-panel">
+        <div className="users-toolbar">
+          <div className="users-search">
+            <AppIcon name="usuarios" />
+            <input
+              type="search"
+              placeholder="Buscar por nome, CPF, matrícula..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <select value={profileFilter} onChange={(event) => setProfileFilter(event.target.value)}>
+            <option value="">Todos os perfis</option>
+            {profiles.map((profile) => (
+              <option value={profile} key={profile}>{profile}</option>
+            ))}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Todos os status</option>
+            <option value="ativo">Ativos</option>
+            <option value="inativo">Inativos</option>
+          </select>
+        </div>
+
+        {error && <div className="users-message error">{error}</div>}
+        {success && <div className="users-message success">{success}</div>}
+
+        {loading ? (
+          <div className="users-empty">Carregando funcionários...</div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="users-empty">Nenhum funcionário encontrado.</div>
+        ) : (
+          <div className="users-table-wrap">
+            <table className="users-table">
+              <thead>
+                <tr>
+                  <th>Funcionário</th>
+                  <th>CPF / Matrícula</th>
+                  <th>Cargo / Turno</th>
+                  <th>Perfil</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr key={user.id}>
+                    <td data-label="Funcionário">
+                      <div className="table-user">
+                        <span>{String(user.nome || 'U').charAt(0).toUpperCase()}</span>
+                        <div>
+                          <strong>{user.nome}</strong>
+                          <small>{user.email || 'Sem e-mail'}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label="CPF / Matrícula">
+                      <strong className="table-main-text">{formatCpf(user.cpf)}</strong>
+                      <small className="table-subtext">{user.matricula || 'Sem matrícula'}</small>
+                    </td>
+                    <td data-label="Cargo / Turno">
+                      <strong className="table-main-text">{user.cargo || 'Não informado'}</strong>
+                      <small className="table-subtext">{user.turno || 'Turno não informado'}</small>
+                    </td>
+                    <td data-label="Perfil">
+                      <span className={`profile-pill profile-${String(user.perfil).toLowerCase()}`}>
+                        {user.perfil}
+                      </span>
+                    </td>
+                    <td data-label="Status">
+                      <span className={`status-pill ${user.status}`}>
+                        <i />
+                        {user.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td data-label="Ações">
+                      <div className="table-actions">
+                        <button type="button" onClick={() => openEdit(user)}>Editar</button>
+                        <button
+                          type="button"
+                          className={user.status === 'ativo' ? 'danger' : 'success'}
+                          onClick={() => toggleStatus(user)}
+                          disabled={Number(user.id) === Number(currentUser.id)}
+                        >
+                          {user.status === 'ativo' ? 'Inativar' : 'Ativar'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {modalOpen && (
+        <div className="user-modal-backdrop" role="presentation" onMouseDown={closeModal}>
+          <div className="user-modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="user-modal-header">
+              <div>
+                <span className="dashboard-kicker">{editing ? 'EDITAR CADASTRO' : 'NOVO CADASTRO'}</span>
+                <h2 id="user-modal-title">{editing ? 'Editar funcionário' : 'Cadastrar funcionário'}</h2>
+              </div>
+              <button type="button" onClick={closeModal} aria-label="Fechar">×</button>
+            </div>
+
+            <form className="user-form" onSubmit={saveUser}>
+              <div className="form-field full">
+                <label htmlFor="user-name">Nome completo</label>
+                <input id="user-name" value={form.nome} onChange={(event) => updateForm('nome', event.target.value)} required />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="user-cpf">CPF</label>
+                <input
+                  id="user-cpf"
+                  inputMode="numeric"
+                  value={form.cpf}
+                  onChange={(event) => updateForm('cpf', formatCpf(event.target.value))}
+                  maxLength={14}
+                  placeholder="000.000.000-00"
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="user-matricula">Matrícula</label>
+                <input id="user-matricula" value={form.matricula} onChange={(event) => updateForm('matricula', event.target.value)} placeholder="Opcional" />
+              </div>
+
+              <div className="form-field full">
+                <label htmlFor="user-email">E-mail</label>
+                <input id="user-email" type="email" value={form.email} onChange={(event) => updateForm('email', event.target.value)} placeholder="Opcional" />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="user-cargo">Cargo</label>
+                <input id="user-cargo" value={form.cargo} onChange={(event) => updateForm('cargo', event.target.value)} placeholder="Ex.: Supervisor" />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="user-turno">Turno</label>
+                <input id="user-turno" value={form.turno} onChange={(event) => updateForm('turno', event.target.value)} placeholder="Ex.: Turno A" />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="user-profile">Perfil</label>
+                <select id="user-profile" value={form.perfil} onChange={(event) => updateForm('perfil', event.target.value)}>
+                  {profiles.map((profile) => (
+                    <option value={profile} key={profile}>{profile}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="user-status">Status</label>
+                <select id="user-status" value={form.status} onChange={(event) => updateForm('status', event.target.value)}>
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                </select>
+              </div>
+
+              <div className="form-field full">
+                <label htmlFor="user-password">{editing ? 'Nova senha' : 'Senha inicial'}</label>
+                <input
+                  id="user-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={form.senha}
+                  onChange={(event) => updateForm('senha', event.target.value)}
+                  placeholder={editing ? 'Deixe em branco para manter a atual' : 'Mínimo de 6 caracteres'}
+                  required={!editing}
+                />
+                <small>{editing ? 'Preencha somente se quiser redefinir a senha.' : 'O funcionário usará esta senha no primeiro acesso.'}</small>
+              </div>
+
+              {error && <div className="users-message error full">{error}</div>}
+
+              <div className="user-form-actions full">
+                <button className="modal-secondary" type="button" onClick={closeModal} disabled={saving}>Cancelar</button>
+                <button className="primary-action-button" type="submit" disabled={saving}>
+                  {saving ? 'Salvando...' : editing ? 'Salvar alterações' : 'Cadastrar funcionário'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -512,12 +891,13 @@ function HomeScreen({ usuario, onLogout }) {
   const [collapsed, setCollapsed] = useState(() => readSidebarPreference())
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  const isAdmin = String(usuario.perfil || '').toUpperCase() === 'ADM'
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
     { id: 'armazem', label: 'Armazém', icon: 'armazem' },
     { id: 'rotas', label: 'Rotas', icon: 'rotas' },
     { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
-    { id: 'usuarios', label: 'Usuários', icon: 'usuarios' },
+    ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
   ]
 
@@ -606,6 +986,7 @@ function HomeScreen({ usuario, onLogout }) {
         </nav>
 
         <div className="sidebar-bottom">
+{isAdmin && (
           <button
             className={`sidebar-link ${activeSection === 'configuracoes' ? 'active' : ''}`}
             type="button"
@@ -615,6 +996,7 @@ function HomeScreen({ usuario, onLogout }) {
             <span className="sidebar-link-icon"><AppIcon name="configuracoes" /></span>
             <span className="sidebar-link-label">Configurações</span>
           </button>
+          )}
 
           <button
             className="sidebar-link logout-link"
@@ -666,7 +1048,9 @@ function HomeScreen({ usuario, onLogout }) {
 
         <div className="app-content">
           {activeSection === 'painel' ? (
-            <DashboardHome usuario={usuario} />
+            <DashboardHome usuario={usuario} onNavigate={navigate} />
+          ) : activeSection === 'usuarios' && isAdmin ? (
+            <UsersScreen currentUser={usuario} />
           ) : (
             <SectionPlaceholder
               title={section.title}
