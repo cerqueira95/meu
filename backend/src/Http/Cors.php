@@ -8,15 +8,16 @@ final class Cors
 {
     public static function handle(): void
     {
-        $allowedOrigin = rtrim(
-            $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173',
-            '/',
-        );
+        $allowedOrigins = array_values(array_filter(array_map(
+            static fn (string $origin): string => rtrim(trim($origin), '/'),
+            explode(',', $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173'),
+        )));
 
         $requestOrigin = rtrim($_SERVER['HTTP_ORIGIN'] ?? '', '/');
 
-        if ($requestOrigin !== '' && hash_equals($allowedOrigin, $requestOrigin)) {
+        if ($requestOrigin !== '' && in_array($requestOrigin, $allowedOrigins, true)) {
             header('Access-Control-Allow-Origin: ' . $requestOrigin);
+            header('Access-Control-Allow-Credentials: true');
             header('Vary: Origin');
         }
 
