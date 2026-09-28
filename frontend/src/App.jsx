@@ -342,8 +342,209 @@ function LoginScreen({ onLogin }) {
   )
 }
 
+const SIDEBAR_KEY = 'warehouse_sidebar_collapsed'
+
+function readSidebarPreference() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function AppIcon({ name }) {
+  const paths = {
+    painel: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+    armazem: (
+      <>
+        <path d="M3 10 12 4l9 6v10H3V10Z" />
+        <path d="M8 20v-6h8v6M3 10h18" />
+      </>
+    ),
+    rotas: (
+      <>
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="18" cy="6" r="2" />
+        <path d="M8 18h3a4 4 0 0 0 4-4V9M9 6h7" />
+      </>
+    ),
+    devolucoes: (
+      <>
+        <path d="M9 7H5v-4" />
+        <path d="M5 7a8 8 0 1 1-1 8" />
+        <path d="M12 8v5l3 2" />
+      </>
+    ),
+    usuarios: (
+      <>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M3 20c.4-4 2.4-6 6-6s5.6 2 6 6" />
+        <path d="M16 7a3 3 0 0 1 0 6M17 15c2.5.5 3.8 2.2 4 5" />
+      </>
+    ),
+    relatorios: (
+      <>
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+      </>
+    ),
+    configuracoes: (
+      <>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+      </>
+    ),
+    sair: (
+      <>
+        <path d="M10 17l5-5-5-5M15 12H3" />
+        <path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
+      </>
+    ),
+    menu: (
+      <>
+        <path d="M4 7h16M4 12h16M4 17h16" />
+      </>
+    ),
+    chevron: <path d="m9 18 6-6-6-6" />,
+  }
+
+  return (
+    <svg className="app-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name] || paths.painel}
+    </svg>
+  )
+}
+
+function DashboardHome({ usuario }) {
+  const firstName = String(usuario.nome || 'Usuário').trim().split(' ')[0]
+
+  return (
+    <>
+      <section className="dashboard-hero">
+        <div>
+          <span className="dashboard-kicker">VISÃO GERAL</span>
+          <h1>Olá, {firstName}.</h1>
+          <p>Seu espaço central para acompanhar a operação e acessar os módulos do sistema.</p>
+        </div>
+        <div className="hero-status">
+          <span className="hero-status-dot" />
+          <div>
+            <small>AMBIENTE</small>
+            <strong>Operacional</strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="dashboard-cards">
+        <article className="metric-card">
+          <span className="metric-label">Perfil</span>
+          <strong>{usuario.perfil || 'Usuário'}</strong>
+          <small>Nível de acesso atual</small>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Cargo</span>
+          <strong>{usuario.cargo || 'Não informado'}</strong>
+          <small>Função cadastrada</small>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Turno</span>
+          <strong>{usuario.turno || 'Não informado'}</strong>
+          <small>Jornada operacional</small>
+        </article>
+      </section>
+
+      <section className="dashboard-section">
+        <div className="section-heading">
+          <div>
+            <span className="dashboard-kicker">COMECE POR AQUI</span>
+            <h2>Módulos do sistema</h2>
+          </div>
+          <span className="section-badge">Estrutura pronta para crescer</span>
+        </div>
+
+        <div className="module-grid">
+          {[
+            ['armazem', 'Armazém', 'Indicadores e rotinas do armazém'],
+            ['rotas', 'Rotas', 'Acompanhamento das operações de entrega'],
+            ['devolucoes', 'Devoluções', 'Controle e análise de devoluções'],
+            ['usuarios', 'Usuários', 'Perfis, acessos e permissões'],
+            ['relatorios', 'Relatórios', 'Indicadores e exportações'],
+            ['configuracoes', 'Configurações', 'Preferências e parâmetros do sistema'],
+          ].map(([icon, title, text]) => (
+            <article className="module-card" key={title}>
+              <span className="module-icon"><AppIcon name={icon} /></span>
+              <div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </div>
+              <span className="module-arrow">→</span>
+            </article>
+          ))}
+        </div>
+      </section>
+    </>
+  )
+}
+
+function SectionPlaceholder({ title, description, icon }) {
+  return (
+    <section className="placeholder-card">
+      <span className="placeholder-icon"><AppIcon name={icon} /></span>
+      <span className="dashboard-kicker">MÓDULO</span>
+      <h1>{title}</h1>
+      <p>{description}</p>
+      <div className="placeholder-note">
+        A estrutura desta seção já está preparada. O conteúdo específico será adicionado nas próximas etapas.
+      </div>
+    </section>
+  )
+}
+
 function HomeScreen({ usuario, onLogout }) {
   const [loggingOut, setLoggingOut] = useState(false)
+  const [activeSection, setActiveSection] = useState('painel')
+  const [collapsed, setCollapsed] = useState(() => readSidebarPreference())
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const menuItems = [
+    { id: 'painel', label: 'Painel', icon: 'painel' },
+    { id: 'armazem', label: 'Armazém', icon: 'armazem' },
+    { id: 'rotas', label: 'Rotas', icon: 'rotas' },
+    { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
+    { id: 'usuarios', label: 'Usuários', icon: 'usuarios' },
+    { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
+  ]
+
+  const sectionMap = {
+    painel: { title: 'Painel', description: 'Visão geral da operação.', icon: 'painel' },
+    armazem: { title: 'Armazém', description: 'Indicadores, controles e rotinas do armazém.', icon: 'armazem' },
+    rotas: { title: 'Rotas', description: 'Acompanhamento das rotas e entregas.', icon: 'rotas' },
+    devolucoes: { title: 'Devoluções', description: 'Gestão e análise das devoluções da operação.', icon: 'devolucoes' },
+    usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
+    relatorios: { title: 'Relatórios', description: 'Indicadores consolidados e exportações.', icon: 'relatorios' },
+    configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
+  }
+
+  function toggleCollapsed() {
+    const next = !collapsed
+    setCollapsed(next)
+    try {
+      window.localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0')
+    } catch {
+      // Ignora quando o navegador bloqueia armazenamento local.
+    }
+  }
+
+  function navigate(section) {
+    setActiveSection(section)
+    setMobileOpen(false)
+  }
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -356,35 +557,124 @@ function HomeScreen({ usuario, onLogout }) {
     }
   }
 
+  const section = sectionMap[activeSection] || sectionMap.painel
+  const initial = String(usuario.nome || 'U').trim().charAt(0).toUpperCase()
+
   return (
-    <main className="authenticated-page">
-      <section className="welcome-card">
-        <span className="brand-icon large">
-          <WarehouseIcon />
-        </span>
-        <span className="eyebrow">ACESSO LIBERADO</span>
-        <h1>Olá, {usuario.nome}.</h1>
-        <p>
-          Seu login foi validado. A estrutura de autenticação do sistema já está
-          funcionando.
-        </p>
-        <div className="user-summary">
-          <div>
-            <span>Perfil</span>
-            <strong>{usuario.perfil}</strong>
-          </div>
-          <div>
-            <span>Cargo</span>
-            <strong>{usuario.cargo || 'Não informado'}</strong>
-          </div>
-          <div>
-            <span>Turno</span>
-            <strong>{usuario.turno || 'Não informado'}</strong>
+    <main className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
+      <button
+        className={`mobile-backdrop ${mobileOpen ? 'visible' : ''}`}
+        type="button"
+        aria-label="Fechar menu"
+        onClick={() => setMobileOpen(false)}
+      />
+
+      <aside className={`app-sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-brand">
+          <span className="sidebar-brand-icon"><WarehouseIcon /></span>
+          <div className="sidebar-brand-copy">
+            <strong>WAREHOUSE</strong>
+            <small>GESTÃO OPERACIONAL</small>
           </div>
         </div>
-        <button className="secondary-button" type="button" onClick={handleLogout}>
-          {loggingOut ? 'Saindo...' : 'Sair'}
-        </button>
+
+        <div className="sidebar-user">
+          <div className="user-avatar" aria-label={`Usuário ${usuario.nome}`}>
+            {initial}
+          </div>
+          <div className="sidebar-user-copy">
+            <strong>{usuario.nome}</strong>
+            <span>{usuario.cargo || 'Colaborador'}</span>
+            <small>{usuario.perfil || 'Usuário'}</small>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav" aria-label="Navegação principal">
+          <span className="sidebar-section-title">NAVEGAÇÃO</span>
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              className={`sidebar-link ${activeSection === item.id ? 'active' : ''}`}
+              type="button"
+              onClick={() => navigate(item.id)}
+              title={collapsed ? item.label : undefined}
+            >
+              <span className="sidebar-link-icon"><AppIcon name={item.icon} /></span>
+              <span className="sidebar-link-label">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <button
+            className={`sidebar-link ${activeSection === 'configuracoes' ? 'active' : ''}`}
+            type="button"
+            onClick={() => navigate('configuracoes')}
+            title={collapsed ? 'Configurações' : undefined}
+          >
+            <span className="sidebar-link-icon"><AppIcon name="configuracoes" /></span>
+            <span className="sidebar-link-label">Configurações</span>
+          </button>
+
+          <button
+            className="sidebar-link logout-link"
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            title={collapsed ? 'Sair' : undefined}
+          >
+            <span className="sidebar-link-icon"><AppIcon name="sair" /></span>
+            <span className="sidebar-link-label">{loggingOut ? 'Saindo...' : 'Sair'}</span>
+          </button>
+
+          <button
+            className="sidebar-collapse-button"
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? 'Expandir menu' : 'Ocultar menu'}
+          >
+            <span className={`collapse-icon ${collapsed ? 'rotated' : ''}`}>
+              <AppIcon name="chevron" />
+            </span>
+            <span className="sidebar-link-label">{collapsed ? 'Expandir' : 'Ocultar menu'}</span>
+          </button>
+        </div>
+      </aside>
+
+      <section className="app-main">
+        <header className="app-topbar">
+          <button
+            className="mobile-menu-button"
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Abrir menu"
+          >
+            <AppIcon name="menu" />
+          </button>
+          <div className="topbar-title">
+            <span>WAREHOUSE</span>
+            <strong>{section.title}</strong>
+          </div>
+          <div className="topbar-user">
+            <div>
+              <strong>{usuario.nome}</strong>
+              <span>{usuario.cargo || usuario.perfil || 'Usuário'}</span>
+            </div>
+            <span className="topbar-avatar">{initial}</span>
+          </div>
+        </header>
+
+        <div className="app-content">
+          {activeSection === 'painel' ? (
+            <DashboardHome usuario={usuario} />
+          ) : (
+            <SectionPlaceholder
+              title={section.title}
+              description={section.description}
+              icon={section.icon}
+            />
+          )}
+        </div>
       </section>
     </main>
   )
