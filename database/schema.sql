@@ -93,7 +93,7 @@ VALUES (
     '06297596506',
     NULL,
     NULL,
-    '$2b$12$nZ/dFx60pNEp8SNGiz50w.MUfZHf72WMBKVHjoaaKUVhW5oC7E34m',
+    '$2b$12$st1UvASRemksVDjLSM2GR.rBc0r3dD4rH3ATYTpW4ETspyGOMdV1q',
     'Supervisor',
     NULL,
     'ADM',
