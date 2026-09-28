@@ -155,7 +155,8 @@ CREATE TABLE IF NOT EXISTS armazem_comentarios (
         ON DELETE CASCADE
         ON UPDATE CASCADE,
     texto VARCHAR(1000) NOT NULL,
-    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_armazem_comentarios_publicacao
