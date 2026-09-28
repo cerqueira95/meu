@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../services/api.js'
 
+const MAX_IMAGES = 4
+const MAX_IMAGE_LENGTH = 760_000
+
 const REACTIONS = [
   { id: 'curtir', icon: '👍', label: 'Curtir' },
   { id: 'parabens', icon: '👏', label: 'Parabéns' },
@@ -36,24 +39,24 @@ async function compressImage(file) {
   if (!file) return null
 
   if (!file.type.startsWith('image/')) {
-    throw new Error('Selecione uma imagem válida.')
+    throw new Error('Selecione apenas arquivos de imagem.')
   }
 
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result)
-    reader.onerror = () => reject(new Error('Não foi possível ler a imagem.'))
+    reader.onerror = () => reject(new Error('Não foi possível ler uma das fotos.'))
     reader.readAsDataURL(file)
   })
 
   const image = await new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('Não foi possível processar a imagem.'))
+    img.onerror = () => reject(new Error('Não foi possível processar uma das fotos.'))
     img.src = dataUrl
   })
 
-  const maxSide = 1600
+  const maxSide = 1400
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height))
   const width = Math.max(1, Math.round(image.width * scale))
   const height = Math.max(1, Math.round(image.height * scale))
@@ -67,13 +70,13 @@ async function compressImage(file) {
   let quality = 0.84
   let result = canvas.toDataURL('image/jpeg', quality)
 
-  while (result.length > 3_000_000 && quality > 0.5) {
-    quality -= 0.08
+  while (result.length > MAX_IMAGE_LENGTH && quality > 0.42) {
+    quality -= 0.07
     result = canvas.toDataURL('image/jpeg', quality)
   }
 
-  if (result.length > 3_500_000) {
-    throw new Error('A foto ficou muito grande. Escolha uma imagem menor.')
+  if (result.length > MAX_IMAGE_LENGTH) {
+    throw new Error('Uma das fotos ficou muito grande. Escolha uma imagem menor.')
   }
 
   return result
@@ -105,6 +108,77 @@ function ReactionSummary({ post }) {
   )
 }
 
+function PhotoGrid({ images, title }) {
+  const [activeIndex, setActiveIndex] = useState(null)
+
+  if (!images?.length) return null
+
+  const count = Math.min(images.length, MAX_IMAGES)
+
+  return (
+    <>
+      <div className={`news-photo-grid count-${count}`}>
+        {images.slice(0, MAX_IMAGES).map((image, index) => (
+          <button
+            className="news-photo-cell"
+            type="button"
+            key={`${index}-${image.slice(-24)}`}
+            onClick={() => setActiveIndex(index)}
+            aria-label={`Abrir foto ${index + 1} de ${count}`}
+          >
+            <img src={image} alt={`${title} — foto ${index + 1}`} />
+          </button>
+        ))}
+      </div>
+
+      {activeIndex !== null && (
+        <div className="news-lightbox" role="dialog" aria-modal="true" onMouseDown={() => setActiveIndex(null)}>
+          <button
+            className="news-lightbox-close"
+            type="button"
+            onClick={() => setActiveIndex(null)}
+            aria-label="Fechar foto"
+          >
+            ×
+          </button>
+
+          {count > 1 && (
+            <button
+              className="news-lightbox-nav previous"
+              type="button"
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => setActiveIndex((current) => (current - 1 + count) % count)}
+              aria-label="Foto anterior"
+            >
+              ‹
+            </button>
+          )}
+
+          <img
+            src={images[activeIndex]}
+            alt={`${title} — foto ${activeIndex + 1}`}
+            onMouseDown={(event) => event.stopPropagation()}
+          />
+
+          {count > 1 && (
+            <button
+              className="news-lightbox-nav next"
+              type="button"
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={() => setActiveIndex((current) => (current + 1) % count)}
+              aria-label="Próxima foto"
+            >
+              ›
+            </button>
+          )}
+
+          <span className="news-lightbox-counter">{activeIndex + 1} / {count}</span>
+        </div>
+      )}
+    </>
+  )
+}
+
 function NewsPost({ post, currentUser, onReact, onComment }) {
   const [comment, setComment] = useState('')
   const [sendingComment, setSendingComment] = useState(false)
@@ -125,6 +199,12 @@ function NewsPost({ post, currentUser, onReact, onComment }) {
     }
   }
 
+  const images = Array.isArray(post.imagens_data)
+    ? post.imagens_data
+    : post.imagem_data
+      ? [post.imagem_data]
+      : []
+
   return (
     <article className="news-post">
       <header className="news-post-header">
@@ -142,11 +222,7 @@ function NewsPost({ post, currentUser, onReact, onComment }) {
         <p>{post.conteudo}</p>
       </div>
 
-      {post.imagem_data && (
-        <div className="news-post-image-wrap">
-          <img src={post.imagem_data} alt={post.titulo} className="news-post-image" />
-        </div>
-      )}
+      <PhotoGrid images={images} title={post.titulo} />
 
       <ReactionSummary post={post} />
 
@@ -211,28 +287,44 @@ function AdminComposer({ currentUser, onPublished }) {
   const [open, setOpen] = useState(false)
   const [titulo, setTitulo] = useState('')
   const [conteudo, setConteudo] = useState('')
-  const [imagem, setImagem] = useState(null)
+  const [imagens, setImagens] = useState([])
   const [processingImage, setProcessingImage] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState('')
 
-  async function chooseImage(event) {
-    const file = event.target.files?.[0]
+  async function chooseImages(event) {
+    const files = Array.from(event.target.files || [])
     event.target.value = ''
 
-    if (!file) return
+    if (files.length === 0) return
+
+    const remaining = MAX_IMAGES - imagens.length
+
+    if (remaining <= 0 || files.length > remaining) {
+      setError(`Você pode adicionar no máximo ${MAX_IMAGES} fotos por publicação.`)
+      return
+    }
 
     setError('')
     setProcessingImage(true)
 
     try {
-      const compressed = await compressImage(file)
-      setImagem(compressed)
+      const compressed = []
+
+      for (const file of files) {
+        compressed.push(await compressImage(file))
+      }
+
+      setImagens((current) => [...current, ...compressed].slice(0, MAX_IMAGES))
     } catch (imageError) {
       setError(imageError.message)
     } finally {
       setProcessingImage(false)
     }
+  }
+
+  function removeImage(index) {
+    setImagens((current) => current.filter((_, itemIndex) => itemIndex !== index))
   }
 
   async function publish(event) {
@@ -250,12 +342,12 @@ function AdminComposer({ currentUser, onPublished }) {
       await api.post('/api/news', {
         titulo: titulo.trim(),
         conteudo: conteudo.trim(),
-        imagem_data: imagem,
+        imagens_data: imagens,
       })
 
       setTitulo('')
       setConteudo('')
-      setImagem(null)
+      setImagens([])
       setOpen(false)
       await onPublished()
     } catch (requestError) {
@@ -263,6 +355,11 @@ function AdminComposer({ currentUser, onPublished }) {
     } finally {
       setPublishing(false)
     }
+  }
+
+  function closeComposer() {
+    if (publishing || processingImage) return
+    setOpen(false)
   }
 
   if (!open) {
@@ -282,7 +379,7 @@ function AdminComposer({ currentUser, onPublished }) {
           <span className="dashboard-kicker">PUBLICAÇÃO DO ADM</span>
           <h2>Nova publicação</h2>
         </div>
-        <button className="news-close-composer" type="button" onClick={() => setOpen(false)} aria-label="Fechar">
+        <button className="news-close-composer" type="button" onClick={closeComposer} aria-label="Fechar">
           ×
         </button>
       </div>
@@ -315,13 +412,25 @@ function AdminComposer({ currentUser, onPublished }) {
         className="news-hidden-file"
         type="file"
         accept="image/png,image/jpeg,image/webp"
-        onChange={chooseImage}
+        multiple
+        onChange={chooseImages}
       />
 
-      {imagem && (
-        <div className="news-image-preview">
-          <img src={imagem} alt="Prévia da publicação" />
-          <button type="button" onClick={() => setImagem(null)}>Remover foto</button>
+      {imagens.length > 0 && (
+        <div className={`news-preview-grid count-${imagens.length}`}>
+          {imagens.map((image, index) => (
+            <div className="news-preview-cell" key={`${index}-${image.slice(-24)}`}>
+              <img src={image} alt={`Prévia da foto ${index + 1}`} />
+              <span>{index + 1}</span>
+              <button
+                type="button"
+                onClick={() => removeImage(index)}
+                aria-label={`Remover foto ${index + 1}`}
+              >
+                ×
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -332,11 +441,19 @@ function AdminComposer({ currentUser, onPublished }) {
           className="news-photo-button"
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={processingImage || publishing}
+          disabled={processingImage || publishing || imagens.length >= MAX_IMAGES}
         >
           <span>▣</span>
-          {processingImage ? 'Processando foto...' : imagem ? 'Trocar foto' : 'Adicionar foto'}
+          {processingImage
+            ? 'Processando fotos...'
+            : imagens.length > 0
+              ? `Adicionar fotos (${imagens.length}/${MAX_IMAGES})`
+              : 'Adicionar fotos'}
         </button>
+
+        <span className="news-photo-limit">
+          Até {MAX_IMAGES} fotos por publicação
+        </span>
 
         <button
           className="primary-action-button"
@@ -472,7 +589,7 @@ export default function NewsScreen({ currentUser }) {
           </div>
           <div className="news-side-rule">
             <span>●</span>
-            <p>Todos podem reagir e comentar. Somente ADM publica notícias.</p>
+            <p>Você pode publicar até 4 fotos. Todos podem reagir e comentar.</p>
           </div>
         </aside>
       </div>
