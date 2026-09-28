@@ -48,7 +48,7 @@ export async function createSession(usuarioId, req, res) {
     )
   `
 
-  res.setHeader('Set-Cookie', serializeSessionCookie(token, expiresAt))
+  res.setHeader('Set-Cookie', serializeSessionCookie(token, expiresAt, req))
 }
 
 export async function createQuickAccess(usuarioId, req) {
@@ -104,6 +104,8 @@ export async function getQuickAccessUser(token, req) {
       u.perfil,
       u.status,
       u.alterar_senha,
+      u.foto_perfil,
+      u.noticias_lidas_ate,
       a.id AS acesso_id
     FROM acessos_rapidos a
     INNER JOIN usuarios u ON u.id = a.usuario_id
@@ -148,9 +150,11 @@ export async function destroySession(req, res) {
     `
   }
 
+  const secure = shouldUseSecureCookie(req) ? '; Secure' : ''
+
   res.setHeader(
     'Set-Cookie',
-    `${COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+    `${COOKIE_NAME}=; Path=/; HttpOnly${secure}; SameSite=Lax; Max-Age=0`,
   )
 }
 
@@ -173,6 +177,8 @@ export async function getSessionUser(req) {
       u.perfil,
       u.status,
       u.alterar_senha,
+      u.foto_perfil,
+      u.noticias_lidas_ate,
       s.id AS sessao_id
     FROM sessoes s
     INNER JOIN usuarios u ON u.id = s.usuario_id
@@ -207,6 +213,8 @@ export function publicUser(usuario) {
     cargo: usuario.cargo ?? null,
     turno: usuario.turno ?? null,
     perfil: usuario.perfil ?? 'usuario',
+    foto_perfil: usuario.foto_perfil ?? null,
+    noticias_lidas_ate: usuario.noticias_lidas_ate ?? null,
     alterar_senha: Boolean(usuario.alterar_senha),
   }
 }
@@ -221,16 +229,26 @@ export function getClientIp(req) {
   return req.socket?.remoteAddress || null
 }
 
-function serializeSessionCookie(token, expiresAt) {
-  return [
+function serializeSessionCookie(token, expiresAt, req) {
+  const parts = [
     `${COOKIE_NAME}=${encodeURIComponent(token)}`,
     'Path=/',
     'HttpOnly',
-    'Secure',
     'SameSite=Lax',
     `Expires=${expiresAt.toUTCString()}`,
     `Max-Age=${SESSION_HOURS * 60 * 60}`,
-  ].join('; ')
+  ]
+
+  if (shouldUseSecureCookie(req)) {
+    parts.splice(3, 0, 'Secure')
+  }
+
+  return parts.join('; ')
+}
+
+function shouldUseSecureCookie(req) {
+  const host = String(req?.headers?.host || '').toLowerCase()
+  return !host.startsWith('localhost:') && !host.startsWith('127.0.0.1:')
 }
 
 function maskCpf(cpf) {

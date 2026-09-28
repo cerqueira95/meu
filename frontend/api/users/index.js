@@ -4,6 +4,7 @@ import { getSessionUser } from '../_lib/session.js'
 
 const PROFILES = ['ADM', 'Operador', 'Ajudante', 'Conferente']
 const STATUSES = ['ativo', 'inativo']
+const MAX_PROFILE_IMAGE_LENGTH = 700_000
 
 export default async function handler(req, res) {
   const admin = await requireAdmin(req, res)
@@ -22,6 +23,7 @@ export default async function handler(req, res) {
           turno,
           perfil,
           status,
+          foto_perfil,
           ultimo_login,
           criado_em
         FROM usuarios
@@ -63,7 +65,8 @@ export default async function handler(req, res) {
           turno,
           perfil,
           status,
-          alterar_senha
+          alterar_senha,
+          foto_perfil
         )
         VALUES (
           ${payload.nome},
@@ -75,7 +78,8 @@ export default async function handler(req, res) {
           ${payload.turno},
           ${payload.perfil},
           ${payload.status},
-          FALSE
+          FALSE,
+          ${payload.foto_perfil}
         )
         RETURNING
           id,
@@ -87,6 +91,7 @@ export default async function handler(req, res) {
           turno,
           perfil,
           status,
+          foto_perfil,
           ultimo_login,
           criado_em
       `
@@ -101,6 +106,20 @@ export default async function handler(req, res) {
         return res.status(409).json({
           status: 'error',
           message: 'CPF, matrícula ou e-mail já cadastrado.',
+        })
+      }
+
+      if (error?.message === 'INVALID_PROFILE_IMAGE') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'A foto de perfil enviada é inválida.',
+        })
+      }
+
+      if (error?.message === 'PROFILE_IMAGE_TOO_LARGE') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'A foto de perfil ficou muito grande.',
         })
       }
 
@@ -158,6 +177,7 @@ function normalizePayload(body = {}) {
     perfil: String(body.perfil || '').trim(),
     status: String(body.status || 'ativo').trim().toLowerCase(),
     senha: String(body.senha || ''),
+    foto_perfil: normalizeProfileImage(body.foto_perfil),
   }
 }
 
@@ -186,9 +206,25 @@ function serializeUser(usuario) {
     turno: usuario.turno ?? null,
     perfil: usuario.perfil,
     status: usuario.status,
+    foto_perfil: usuario.foto_perfil ?? null,
     ultimo_login: usuario.ultimo_login ?? null,
     criado_em: usuario.criado_em ?? null,
   }
+}
+
+function normalizeProfileImage(value) {
+  const image = String(value || '').trim()
+  if (!image) return null
+
+  if (!/^data:image\/(png|jpeg|jpg|webp);base64,/i.test(image)) {
+    throw new Error('INVALID_PROFILE_IMAGE')
+  }
+
+  if (image.length > MAX_PROFILE_IMAGE_LENGTH) {
+    throw new Error('PROFILE_IMAGE_TOO_LARGE')
+  }
+
+  return image
 }
 
 function onlyDigits(value) {

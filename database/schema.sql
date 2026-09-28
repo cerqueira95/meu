@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     status VARCHAR(20) NOT NULL DEFAULT 'ativo'
         CHECK (status IN ('ativo', 'inativo', 'bloqueado')),
     alterar_senha BOOLEAN NOT NULL DEFAULT FALSE,
+    foto_perfil TEXT,
+    noticias_lidas_ate TIMESTAMPTZ,
     tentativas_login INTEGER NOT NULL DEFAULT 0,
     bloqueado_ate TIMESTAMPTZ,
     ultimo_login TIMESTAMPTZ,
@@ -139,6 +141,9 @@ CREATE TABLE IF NOT EXISTS armazem_publicacoes (
     conteudo TEXT NOT NULL,
     imagem_data TEXT,
     imagens_data JSONB NOT NULL DEFAULT '[]'::jsonb,
+    video_url TEXT,
+    video_nome VARCHAR(255),
+    video_tipo VARCHAR(100),
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

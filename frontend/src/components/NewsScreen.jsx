@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../services/api.js'
+import UserAvatar from './UserAvatar.jsx'
 
 const MAX_IMAGES = 4
 const MAX_IMAGE_LENGTH = 760_000
@@ -30,18 +31,6 @@ function wasEdited(createdAt, updatedAt) {
   const updated = new Date(updatedAt).getTime()
 
   return Number.isFinite(created) && Number.isFinite(updated) && updated - created > 1500
-}
-
-function initials(name) {
-  const words = String(name || 'U')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-
-  if (words.length === 0) return 'U'
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase()
 }
 
 async function compressImage(file) {
@@ -110,11 +99,55 @@ async function processSelectedImages(files, currentCount) {
   return compressed
 }
 
+async function uploadVideo(file) {
+  if (!file) return null
+
+  const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime']
+
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Use um vídeo MP4, WebM ou MOV.')
+  }
+
+  if (file.size > 35 * 1024 * 1024) {
+    throw new Error('O vídeo deve ter no máximo 35 MB.')
+  }
+
+  const response = await fetch('/api/media/upload', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': file.type,
+      'X-File-Name': encodeURIComponent(file.name || 'video'),
+    },
+    body: file,
+  })
+
+  const body = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new Error(body?.message || 'Não foi possível enviar o vídeo.')
+  }
+
+  return {
+    url: body.url,
+    nome: file.name || body.nome || 'Vídeo',
+    tipo: file.type || body.tipo || 'video/mp4',
+  }
+}
+
 function ReactionSummary({ post }) {
-  const total =
-    Number(post.reacoes?.curtir || 0) +
-    Number(post.reacoes?.parabens || 0) +
-    Number(post.reacoes?.importante || 0)
+  const activeReactions = REACTIONS
+    .map((reaction) => ({
+      ...reaction,
+      count: Number(post.reacoes?.[reaction.id] || 0),
+    }))
+    .filter((reaction) => reaction.count > 0)
+
+  const total = activeReactions.reduce(
+    (sum, reaction) => sum + reaction.count,
+    0,
+  )
 
   if (total === 0 && post.comentarios.length === 0) return null
 
@@ -123,7 +156,16 @@ function ReactionSummary({ post }) {
       <span>
         {total > 0 && (
           <>
-            <span className="news-mini-reactions">👍 👏 ⭐</span>
+            <span className="news-mini-reactions">
+              {activeReactions.map((reaction) => (
+                <span
+                  key={reaction.id}
+                  title={`${reaction.label}: ${reaction.count}`}
+                >
+                  {reaction.icon}
+                </span>
+              ))}
+            </span>
             {total} {total === 1 ? 'reação' : 'reações'}
           </>
         )}
@@ -246,7 +288,11 @@ function CommentItem({ item, isAdmin, onManage }) {
 
   return (
     <div className="news-comment">
-      <div className="news-comment-avatar">{initials(item.usuario.nome)}</div>
+      <UserAvatar
+        name={item.usuario.nome}
+        photo={item.usuario.foto_perfil}
+        className="news-comment-avatar"
+      />
       <div className="news-comment-bubble">
         <div className="news-comment-meta">
           <div>
@@ -340,7 +386,11 @@ function NewsPost({
   return (
     <article className="news-post">
       <header className="news-post-header">
-        <div className="news-author-avatar">{initials(post.autor.nome)}</div>
+        <UserAvatar
+          name={post.autor.nome}
+          photo={post.autor.foto_perfil}
+          className="news-author-avatar"
+        />
         <div className="news-author-copy">
           <strong>{post.autor.nome}</strong>
           <span>{post.autor.cargo || post.autor.perfil || 'Equipe do armazém'}</span>
@@ -392,6 +442,20 @@ function NewsPost({
 
       <PhotoGrid images={images} title={post.titulo} />
 
+      {post.video_url && (
+        <div className="news-video-wrap">
+          <video
+            src={post.video_url}
+            controls
+            playsInline
+            preload="metadata"
+          >
+            Seu navegador não suporta reprodução de vídeo.
+          </video>
+          {post.video_nome && <span>{post.video_nome}</span>}
+        </div>
+      )}
+
       <ReactionSummary post={post} />
 
       <div className="news-reaction-bar">
@@ -428,7 +492,11 @@ function NewsPost({
       )}
 
       <form className="news-comment-form" onSubmit={submitComment}>
-        <div className="news-comment-avatar current">{initials(currentUser.nome)}</div>
+        <UserAvatar
+          name={currentUser.nome}
+          photo={currentUser.foto_perfil}
+          className="news-comment-avatar current"
+        />
         <div className="news-comment-input-wrap">
           <input
             value={comment}
@@ -454,6 +522,7 @@ function PostEditor({
   onSaved,
 }) {
   const fileInputRef = useRef(null)
+  const videoInputRef = useRef(null)
   const [titulo, setTitulo] = useState(initialPost?.titulo || '')
   const [conteudo, setConteudo] = useState(initialPost?.conteudo || '')
   const [imagens, setImagens] = useState(
@@ -463,7 +532,17 @@ function PostEditor({
         ? [initialPost.imagem_data]
         : [],
   )
+  const [video, setVideo] = useState(
+    initialPost?.video_url
+      ? {
+          url: initialPost.video_url,
+          nome: initialPost.video_nome || 'Vídeo',
+          tipo: initialPost.video_tipo || 'video/mp4',
+        }
+      : null,
+  )
   const [processingImage, setProcessingImage] = useState(false)
+  const [processingVideo, setProcessingVideo] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -472,6 +551,11 @@ function PostEditor({
     event.target.value = ''
 
     if (!files?.length) return
+
+    if (video) {
+      setError('Remova o vídeo antes de adicionar fotos.')
+      return
+    }
 
     setError('')
     setProcessingImage(true)
@@ -488,6 +572,29 @@ function PostEditor({
 
   function removeImage(index) {
     setImagens((current) => current.filter((_, itemIndex) => itemIndex !== index))
+  }
+
+  async function chooseVideo(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    if (imagens.length > 0) {
+      setError('Remova as fotos antes de adicionar um vídeo.')
+      return
+    }
+
+    setError('')
+    setProcessingVideo(true)
+
+    try {
+      setVideo(await uploadVideo(file))
+    } catch (videoError) {
+      setError(videoError.message)
+    } finally {
+      setProcessingVideo(false)
+    }
   }
 
   async function submit(event) {
@@ -509,12 +616,18 @@ function PostEditor({
           titulo: titulo.trim(),
           conteudo: conteudo.trim(),
           imagens_data: imagens,
+          video_url: video?.url || null,
+          video_nome: video?.nome || null,
+          video_tipo: video?.tipo || null,
         })
       } else {
         await api.post('/api/news', {
           titulo: titulo.trim(),
           conteudo: conteudo.trim(),
           imagens_data: imagens,
+          video_url: video?.url || null,
+          video_nome: video?.nome || null,
+          video_tipo: video?.tipo || null,
         })
       }
 
@@ -540,14 +653,18 @@ function PostEditor({
           type="button"
           onClick={onCancel}
           aria-label="Fechar"
-          disabled={saving || processingImage}
+          disabled={saving || processingImage || processingVideo}
         >
           ×
         </button>
       </div>
 
       <div className="news-editor-author">
-        <div className="news-author-avatar admin">{initials(currentUser.nome)}</div>
+        <UserAvatar
+          name={currentUser.nome}
+          photo={currentUser.foto_perfil}
+          className="news-author-avatar admin"
+        />
         <div>
           <strong>{currentUser.nome}</strong>
           <span>{currentUser.cargo || currentUser.perfil}</span>
@@ -586,6 +703,14 @@ function PostEditor({
         onChange={chooseImages}
       />
 
+      <input
+        ref={videoInputRef}
+        className="news-hidden-file"
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        onChange={chooseVideo}
+      />
+
       {imagens.length > 0 && (
         <div className={`news-preview-grid count-${imagens.length}`}>
           {imagens.map((image, index) => (
@@ -604,6 +729,23 @@ function PostEditor({
         </div>
       )}
 
+      {video && (
+        <div className="news-video-preview">
+          <video src={video.url} controls playsInline preload="metadata" />
+          <div>
+            <strong>{video.nome}</strong>
+            <span>Vídeo pronto para publicar</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setVideo(null)}
+            aria-label="Remover vídeo"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {error && <div className="news-form-error">{error}</div>}
 
       <div className="news-composer-actions">
@@ -611,7 +753,7 @@ function PostEditor({
           className="news-photo-button"
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={processingImage || saving || imagens.length >= MAX_IMAGES}
+          disabled={processingImage || processingVideo || saving || imagens.length >= MAX_IMAGES || Boolean(video)}
         >
           <span>▣</span>
           {processingImage
@@ -621,12 +763,26 @@ function PostEditor({
               : 'Adicionar fotos'}
         </button>
 
-        <span className="news-photo-limit">Até {MAX_IMAGES} fotos por publicação</span>
+        <button
+          className="news-video-button"
+          type="button"
+          onClick={() => videoInputRef.current?.click()}
+          disabled={processingImage || processingVideo || saving || imagens.length > 0}
+        >
+          <span>▶</span>
+          {processingVideo
+            ? 'Enviando vídeo...'
+            : video
+              ? 'Trocar vídeo'
+              : 'Adicionar vídeo'}
+        </button>
+
+        <span className="news-photo-limit">Até {MAX_IMAGES} fotos ou 1 vídeo de até 35 MB</span>
 
         <button
           className="primary-action-button"
           type="submit"
-          disabled={saving || processingImage}
+          disabled={saving || processingImage || processingVideo}
         >
           {saving
             ? mode === 'edit' ? 'Salvando...' : 'Publicando...'
@@ -643,7 +799,11 @@ function AdminComposer({ currentUser, onPublished }) {
   if (!open) {
     return (
       <button className="news-create-trigger" type="button" onClick={() => setOpen(true)}>
-        <div className="news-author-avatar admin">{initials(currentUser.nome)}</div>
+        <UserAvatar
+          name={currentUser.nome}
+          photo={currentUser.foto_perfil}
+          className="news-author-avatar admin"
+        />
         <span>Compartilhe uma notícia, resultado ou comunicado...</span>
         <strong>+ Nova publicação</strong>
       </button>
@@ -760,19 +920,21 @@ export default function NewsScreen({ currentUser }) {
           <h1>Armazém New</h1>
           <p>Notícias, resultados, reconhecimentos e comunicados do armazém em um só lugar.</p>
         </div>
-        <div className="news-header-stats">
-          <div>
-            <strong>{posts.length}</strong>
-            <span>publicações</span>
+        {isAdmin && (
+          <div className="news-header-stats">
+            <div>
+              <strong>{posts.length}</strong>
+              <span>publicações</span>
+            </div>
+            <div>
+              <strong>{totalComments}</strong>
+              <span>comentários</span>
+            </div>
           </div>
-          <div>
-            <strong>{totalComments}</strong>
-            <span>comentários</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      <div className="news-layout">
+      <div className={`news-layout ${isAdmin ? 'admin-layout' : 'viewer-layout'}`}>
         <div className="news-feed">
           {isAdmin && <AdminComposer currentUser={currentUser} onPublished={loadPosts} />}
 
@@ -806,29 +968,28 @@ export default function NewsScreen({ currentUser }) {
           )}
         </div>
 
-        <aside className="news-side-card">
-          <span className="news-side-icon">N</span>
-          <span className="dashboard-kicker">ARMAZÉM NEW</span>
-          <h2>Informação que chega a todo mundo.</h2>
-          <p>
-            Use este espaço para compartilhar resultados, avisos importantes,
-            reconhecimentos e novidades da operação.
-          </p>
-          <div className="news-side-rule">
-            <span>●</span>
-            <p>Publicações exibem automaticamente a data e a hora em que foram criadas.</p>
-          </div>
-          <div className="news-side-rule">
-            <span>●</span>
-            <p>Você pode publicar até 4 fotos. Todos podem reagir e comentar.</p>
-          </div>
-          {isAdmin && (
+        {isAdmin && (
+          <aside className="news-side-card">
+            <span className="news-side-icon">N</span>
+            <span className="dashboard-kicker">ARMAZÉM NEW</span>
+            <h2>Central de publicação</h2>
+            <p>
+              Área de apoio para quem administra a comunicação interna do armazém.
+            </p>
+            <div className="news-side-rule">
+              <span>●</span>
+              <p>Publicações exibem automaticamente a data e a hora em que foram criadas.</p>
+            </div>
+            <div className="news-side-rule">
+              <span>●</span>
+              <p>Você pode publicar até 4 fotos ou 1 vídeo. Todos podem reagir e comentar.</p>
+            </div>
             <div className="news-side-rule">
               <span>●</span>
               <p>Como ADM, você pode editar ou excluir publicações e comentários.</p>
             </div>
-          )}
-        </aside>
+          </aside>
+        )}
       </div>
 
       {editingPost && (

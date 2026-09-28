@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const [posts, comments, reactions] = await Promise.all([
+      const [posts, comments, reactions, unreadRows] = await Promise.all([
         sql`
           SELECT
             p.id,
@@ -19,12 +19,16 @@ export default async function handler(req, res) {
             p.conteudo,
             p.imagem_data,
             p.imagens_data,
+            p.video_url,
+            p.video_nome,
+            p.video_tipo,
             p.criado_em,
             p.atualizado_em,
             u.id AS autor_id,
             u.nome AS autor_nome,
             u.cargo AS autor_cargo,
-            u.perfil AS autor_perfil
+            u.perfil AS autor_perfil,
+            u.foto_perfil AS autor_foto_perfil
           FROM armazem_publicacoes p
           INNER JOIN usuarios u ON u.id = p.autor_id
           ORDER BY p.criado_em DESC
@@ -39,7 +43,8 @@ export default async function handler(req, res) {
             c.atualizado_em,
             u.id AS usuario_id,
             u.nome AS usuario_nome,
-            u.cargo AS usuario_cargo
+            u.cargo AS usuario_cargo,
+            u.foto_perfil AS usuario_foto_perfil
           FROM armazem_comentarios c
           INNER JOIN usuarios u ON u.id = c.usuario_id
           ORDER BY c.criado_em ASC
@@ -47,6 +52,11 @@ export default async function handler(req, res) {
         sql`
           SELECT publicacao_id, usuario_id, tipo
           FROM armazem_reacoes
+        `,
+        sql`
+          SELECT COUNT(*)::int AS count
+          FROM armazem_publicacoes
+          WHERE criado_em > COALESCE(${usuario.noticias_lidas_ate}, to_timestamp(0))
         `,
       ])
 
@@ -63,11 +73,11 @@ export default async function handler(req, res) {
             id: Number(comment.usuario_id),
             nome: comment.usuario_nome,
             cargo: comment.usuario_cargo ?? null,
+            foto_perfil: comment.usuario_foto_perfil ?? null,
           },
         })
         commentsByPost.set(key, list)
       }
-
       const reactionsByPost = new Map()
       for (const reaction of reactions) {
         const key = Number(reaction.publicacao_id)
@@ -91,6 +101,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         status: 'ok',
+        nao_lidas: Number(unreadRows[0]?.count || 0),
         publicacoes: posts.map((post) => {
           const imagens = normalizeStoredImages(post.imagens_data, post.imagem_data)
 
@@ -100,6 +111,9 @@ export default async function handler(req, res) {
             conteudo: post.conteudo,
             imagens_data: imagens,
             imagem_data: imagens[0] ?? null,
+            video_url: post.video_url ?? null,
+            video_nome: post.video_nome ?? null,
+            video_tipo: post.video_tipo ?? null,
             criado_em: post.criado_em,
             atualizado_em: post.atualizado_em,
             autor: {
@@ -107,6 +121,7 @@ export default async function handler(req, res) {
               nome: post.autor_nome,
               cargo: post.autor_cargo ?? null,
               perfil: post.autor_perfil,
+              foto_perfil: post.autor_foto_perfil ?? null,
             },
             comentarios: commentsByPost.get(Number(post.id)) || [],
             reacoes: reactionsByPost.get(Number(post.id)) || {
@@ -139,7 +154,14 @@ export default async function handler(req, res) {
       const titulo = String(req.body?.titulo || '').trim()
       const conteudo = String(req.body?.conteudo || '').trim()
       const imagensData = normalizeImages(req.body?.imagens_data)
+      const video = normalizeVideo(req.body)
 
+      if (imagensData.length > 0 && video.url) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Use fotos ou vídeo na publicação, não os dois ao mesmo tempo.',
+        })
+      }
       if (titulo.length < 3 || titulo.length > 180) {
         return res.status(400).json({
           status: 'error',
@@ -160,14 +182,20 @@ export default async function handler(req, res) {
           titulo,
           conteudo,
           imagem_data,
-          imagens_data
+          imagens_data,
+          video_url,
+          video_nome,
+          video_tipo
         )
         VALUES (
           ${usuario.id},
           ${titulo},
           ${conteudo},
           ${imagensData[0] ?? null},
-          ${JSON.stringify(imagensData)}::jsonb
+          ${JSON.stringify(imagensData)}::jsonb,
+          ${video.url},
+          ${video.nome},
+          ${video.tipo}
         )
         RETURNING id
       `
@@ -184,7 +212,6 @@ export default async function handler(req, res) {
           message: 'Você pode adicionar no máximo 4 fotos por publicação.',
         })
       }
-
       if (error?.message === 'INVALID_IMAGE') {
         return res.status(400).json({
           status: 'error',
@@ -196,6 +223,13 @@ export default async function handler(req, res) {
         return res.status(400).json({
           status: 'error',
           message: 'As fotos ficaram muito grandes. Tente imagens menores.',
+        })
+      }
+
+      if (error?.message === 'INVALID_VIDEO') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'O vídeo enviado é inválido.',
         })
       }
 
@@ -267,6 +301,28 @@ function normalizeImages(value) {
   }
 
   return normalized
+}
+
+function normalizeVideo(body = {}) {
+  const url = String(body.video_url || '').trim()
+  if (!url) {
+    return { url: null, nome: null, tipo: null }
+  }
+
+  if (!url.startsWith('/local-media/') && !/^https:\/\//i.test(url)) {
+    throw new Error('INVALID_VIDEO')
+  }
+
+  const tipo = String(body.video_tipo || '').trim().toLowerCase()
+  if (tipo && !['video/mp4', 'video/webm', 'video/quicktime'].includes(tipo)) {
+    throw new Error('INVALID_VIDEO')
+  }
+
+  return {
+    url,
+    nome: String(body.video_nome || 'Vídeo').trim().slice(0, 255) || 'Vídeo',
+    tipo: tipo || 'video/mp4',
+  }
 }
 
 function normalizeStoredImages(value, fallback) {

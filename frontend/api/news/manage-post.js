@@ -32,7 +32,6 @@ export default async function handler(req, res) {
       if (!rows[0]) {
         return res.status(404).json({ status: 'error', message: 'Publicação não encontrada.' })
       }
-
       return res.status(200).json({
         status: 'ok',
         message: 'Publicação excluída com sucesso.',
@@ -46,6 +45,14 @@ export default async function handler(req, res) {
     const titulo = String(req.body?.titulo || '').trim()
     const conteudo = String(req.body?.conteudo || '').trim()
     const imagensData = normalizeImages(req.body?.imagens_data)
+    const video = normalizeVideo(req.body)
+
+    if (imagensData.length > 0 && video.url) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Use fotos ou vídeo na publicação, não os dois ao mesmo tempo.',
+      })
+    }
 
     if (titulo.length < 3 || titulo.length > 180) {
       return res.status(400).json({
@@ -67,11 +74,13 @@ export default async function handler(req, res) {
           conteudo = ${conteudo},
           imagem_data = ${imagensData[0] ?? null},
           imagens_data = ${JSON.stringify(imagensData)}::jsonb,
+          video_url = ${video.url},
+          video_nome = ${video.nome},
+          video_tipo = ${video.tipo},
           atualizado_em = NOW()
       WHERE id = ${id}
       RETURNING id
     `
-
     if (!rows[0]) {
       return res.status(404).json({ status: 'error', message: 'Publicação não encontrada.' })
     }
@@ -102,6 +111,13 @@ export default async function handler(req, res) {
       })
     }
 
+    if (error?.message === 'INVALID_VIDEO') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'O vídeo enviado é inválido.',
+      })
+    }
+
     console.error('news_manage_post_error', error)
     return res.status(500).json({
       status: 'error',
@@ -113,7 +129,6 @@ export default async function handler(req, res) {
 async function requireAdmin(req, res) {
   try {
     const usuario = await getSessionUser(req)
-
     if (!usuario) {
       res.status(401).json({ status: 'error', message: 'Sessão não autenticada.' })
       return null
@@ -167,4 +182,25 @@ function normalizeImages(value) {
   }
 
   return normalized
+}
+
+function normalizeVideo(body = {}) {
+  const url = String(body.video_url || '').trim()
+  if (!url) {
+    return { url: null, nome: null, tipo: null }
+  }
+  if (!url.startsWith('/local-media/') && !/^https:\/\//i.test(url)) {
+    throw new Error('INVALID_VIDEO')
+  }
+
+  const tipo = String(body.video_tipo || '').trim().toLowerCase()
+  if (tipo && !['video/mp4', 'video/webm', 'video/quicktime'].includes(tipo)) {
+    throw new Error('INVALID_VIDEO')
+  }
+
+  return {
+    url,
+    nome: String(body.video_nome || 'Vídeo').trim().slice(0, 255) || 'Vídeo',
+    tipo: tipo || 'video/mp4',
+  }
 }

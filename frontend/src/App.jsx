@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './services/api.js'
 import NewsScreen from './components/NewsScreen.jsx'
+import HomeNewsPreview from './components/HomeNewsPreview.jsx'
+import UserAvatar from './components/UserAvatar.jsx'
+import ProfilePhotoModal, { compressProfilePhoto } from './components/ProfilePhotoModal.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -36,6 +39,18 @@ function formatCpf(value) {
     .replace(/^(\d{3})(\d)/, '$1.$2')
     .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
     .replace(/\.(\d{3})(\d)/, '.$1-$2')
+}
+
+function formatNotificationDate(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 function WarehouseIcon() {
@@ -407,6 +422,12 @@ function AppIcon({ name }) {
         <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
       </>
     ),
+    bell: (
+      <>
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21h4" />
+      </>
+    ),
     sair: (
       <>
         <path d="M10 17l5-5-5-5M15 12H3" />
@@ -441,10 +462,7 @@ function DashboardHome({ usuario, onNavigate }) {
         </div>
         <div className="hero-status">
           <span className="hero-status-dot" />
-          <div>
-            <small>AMBIENTE</small>
-            <strong>Operacional</strong>
-          </div>
+          <strong>Operação ativa</strong>
         </div>
       </section>
 
@@ -465,6 +483,8 @@ function DashboardHome({ usuario, onNavigate }) {
           <small>Jornada operacional</small>
         </article>
       </section>
+
+      <HomeNewsPreview onNavigate={onNavigate} />
 
       <section className="dashboard-section">
         <div className="section-heading">
@@ -515,8 +535,10 @@ function UsersScreen({ currentUser }) {
     perfil: 'Operador',
     status: 'ativo',
     senha: '',
+    foto_perfil: null,
   }
 
+  const userPhotoInputRef = useRef(null)
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -569,6 +591,7 @@ function UsersScreen({ currentUser }) {
       perfil: user.perfil || 'Operador',
       status: user.status || 'ativo',
       senha: '',
+      foto_perfil: user.foto_perfil || null,
     })
     setError('')
     setSuccess('')
@@ -584,6 +607,22 @@ function UsersScreen({ currentUser }) {
 
   function updateForm(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  async function chooseUserPhoto(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    setError('')
+
+    try {
+      const photo = await compressProfilePhoto(file)
+      updateForm('foto_perfil', photo)
+    } catch (photoError) {
+      setError(photoError.message)
+    }
   }
 
   async function saveUser(event) {
@@ -735,7 +774,11 @@ function UsersScreen({ currentUser }) {
                   <tr key={user.id}>
                     <td data-label="Funcionário">
                       <div className="table-user">
-                        <span>{String(user.nome || 'U').charAt(0).toUpperCase()}</span>
+                        <UserAvatar
+                          name={user.nome}
+                          photo={user.foto_perfil}
+                          className="table-user-avatar"
+                        />
                         <div>
                           <strong>{user.nome}</strong>
                           <small>{user.email || 'Sem e-mail'}</small>
@@ -794,6 +837,42 @@ function UsersScreen({ currentUser }) {
             </div>
 
             <form className="user-form" onSubmit={saveUser}>
+              <div className="user-photo-editor full">
+                <UserAvatar
+                  name={form.nome || 'Funcionário'}
+                  photo={form.foto_perfil}
+                  className="user-photo-editor-avatar"
+                />
+                <div>
+                  <strong>Foto do funcionário</strong>
+                  <span>PNG, JPG ou WebP. A imagem será ajustada automaticamente.</span>
+                  <div className="user-photo-editor-actions">
+                    <button
+                      type="button"
+                      onClick={() => userPhotoInputRef.current?.click()}
+                    >
+                      {form.foto_perfil ? 'Trocar foto' : 'Adicionar foto'}
+                    </button>
+                    {form.foto_perfil && (
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => updateForm('foto_perfil', null)}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <input
+                  ref={userPhotoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  hidden
+                  onChange={chooseUserPhoto}
+                />
+              </div>
+
               <div className="form-field full">
                 <label htmlFor="user-name">Nome completo</label>
                 <input id="user-name" value={form.nome} onChange={(event) => updateForm('nome', event.target.value)} required />
@@ -893,11 +972,16 @@ function SectionPlaceholder({ title, description, icon }) {
   )
 }
 
-function HomeScreen({ usuario, onLogout }) {
+function HomeScreen({ usuario, onLogout, onUserChange }) {
   const [loggingOut, setLoggingOut] = useState(false)
   const [activeSection, setActiveSection] = useState('painel')
   const [collapsed, setCollapsed] = useState(() => readSidebarPreference())
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [unreadNews, setUnreadNews] = useState(0)
+  const [recentNews, setRecentNews] = useState([])
+  const [notificationOpen, setNotificationOpen] = useState(false)
+  const [profilePhotoOpen, setProfilePhotoOpen] = useState(false)
+  const notificationRef = useRef(null)
 
   const isAdmin = String(usuario.perfil || '').toUpperCase() === 'ADM'
   const menuItems = [
@@ -909,6 +993,54 @@ function HomeScreen({ usuario, onLogout }) {
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
   ]
+
+  useEffect(() => {
+    let active = true
+
+    async function refreshUnread() {
+      try {
+        const data = await api.get('/api/news')
+        if (active) {
+          setUnreadNews(Number(data.nao_lidas || 0))
+          setRecentNews((data.publicacoes || []).slice(0, 5))
+        }
+      } catch {
+        // A ausência temporária do feed não bloqueia a navegação.
+      }
+    }
+
+    refreshUnread()
+    const timer = window.setInterval(refreshUnread, 60000)
+
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!notificationOpen) return undefined
+
+    function closeNotifications(event) {
+      if (!notificationRef.current?.contains(event.target)) {
+        setNotificationOpen(false)
+      }
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setNotificationOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', closeNotifications)
+    document.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', closeNotifications)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [notificationOpen])
 
   const sectionMap = {
     painel: { title: 'Painel', description: 'Visão geral da operação.', icon: 'painel' },
@@ -931,9 +1063,23 @@ function HomeScreen({ usuario, onLogout }) {
     }
   }
 
+  async function markNewsRead() {
+    try {
+      await api.post('/api/news/read')
+      setUnreadNews(0)
+    } catch {
+      // Mantém a navegação funcionando mesmo se a atualização do indicador falhar.
+    }
+  }
+
   function navigate(section) {
     setActiveSection(section)
     setMobileOpen(false)
+    setNotificationOpen(false)
+
+    if (section === 'news') {
+      markNewsRead()
+    }
   }
 
   async function handleLogout() {
@@ -948,7 +1094,6 @@ function HomeScreen({ usuario, onLogout }) {
   }
 
   const section = sectionMap[activeSection] || sectionMap.painel
-  const initial = String(usuario.nome || 'U').trim().charAt(0).toUpperCase()
 
   return (
     <main className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
@@ -969,9 +1114,11 @@ function HomeScreen({ usuario, onLogout }) {
         </div>
 
         <div className="sidebar-user">
-          <div className="user-avatar" aria-label={`Usuário ${usuario.nome}`}>
-            {initial}
-          </div>
+          <UserAvatar
+            name={usuario.nome}
+            photo={usuario.foto_perfil}
+            className="user-avatar"
+          />
           <div className="sidebar-user-copy">
             <strong>{usuario.nome}</strong>
             <span>{usuario.cargo || 'Colaborador'}</span>
@@ -991,6 +1138,11 @@ function HomeScreen({ usuario, onLogout }) {
             >
               <span className="sidebar-link-icon"><AppIcon name={item.icon} /></span>
               <span className="sidebar-link-label">{item.label}</span>
+              {item.id === 'news' && unreadNews > 0 && (
+                <span className="sidebar-news-badge">
+                  {unreadNews > 9 ? '9+' : unreadNews}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -1047,12 +1199,98 @@ function HomeScreen({ usuario, onLogout }) {
             <span>WAREHOUSE</span>
             <strong>{section.title}</strong>
           </div>
-          <div className="topbar-user">
-            <div>
-              <strong>{usuario.nome}</strong>
-              <span>{usuario.cargo || usuario.perfil || 'Usuário'}</span>
+          <div className="topbar-actions">
+            <div className="notification-center" ref={notificationRef}>
+              <button
+                className={`news-notification-button ${unreadNews > 0 ? 'has-news' : ''}`}
+                type="button"
+                onClick={() => setNotificationOpen((current) => !current)}
+                aria-expanded={notificationOpen}
+                aria-label={unreadNews > 0 ? `${unreadNews} novas publicações` : 'Abrir notificações'}
+                title="Notificações"
+              >
+                <AppIcon name="bell" />
+                {unreadNews > 0 && (
+                  <span>{unreadNews > 9 ? '9+' : unreadNews}</span>
+                )}
+              </button>
+
+              {notificationOpen && (
+                <div className="notification-popover">
+                  <div className="notification-popover-header">
+                    <div>
+                      <span className="dashboard-kicker">NOTIFICAÇÕES</span>
+                      <strong>
+                        {unreadNews > 0
+                          ? `${unreadNews} ${unreadNews === 1 ? 'novidade' : 'novidades'} para você`
+                          : 'Tudo em dia'}
+                      </strong>
+                    </div>
+                    <span className={`notification-status-dot ${unreadNews > 0 ? 'active' : ''}`} />
+                  </div>
+
+                  <div className="notification-popover-body">
+                    {recentNews.length === 0 ? (
+                      <div className="notification-empty">
+                        <span>✓</span>
+                        <div>
+                          <strong>Nenhuma publicação ainda</strong>
+                          <p>Quando houver uma novidade do armazém, ela aparecerá aqui.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      recentNews.map((post, index) => (
+                        <button
+                          className={`notification-item ${index < unreadNews ? 'unread' : ''}`}
+                          type="button"
+                          key={post.id}
+                          onClick={() => navigate('news')}
+                        >
+                          <span className="notification-item-icon">
+                            {post.video_url ? '▶' : post.imagens_data?.length ? '▣' : 'N'}
+                          </span>
+                          <span className="notification-item-copy">
+                            <strong>{post.titulo}</strong>
+                            <small>
+                              {post.autor?.nome || 'Armazém'}
+                              {' • '}
+                              {formatNotificationDate(post.criado_em)}
+                            </small>
+                          </span>
+                          {index < unreadNews && <span className="notification-new-dot" />}
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <button
+                    className="notification-view-all"
+                    type="button"
+                    onClick={() => navigate('news')}
+                  >
+                    Abrir Armazém New
+                    <span>→</span>
+                  </button>
+                </div>
+              )}
             </div>
-            <span className="topbar-avatar">{initial}</span>
+
+            <button
+              className="topbar-user topbar-profile-button"
+              type="button"
+              onClick={() => setProfilePhotoOpen(true)}
+              title="Alterar foto de perfil"
+            >
+              <div>
+                <strong>{usuario.nome}</strong>
+                <span>{usuario.cargo || usuario.perfil || 'Usuário'}</span>
+              </div>
+              <UserAvatar
+                name={usuario.nome}
+                photo={usuario.foto_perfil}
+                className="topbar-avatar"
+              />
+            </button>
           </div>
         </header>
 
@@ -1072,6 +1310,14 @@ function HomeScreen({ usuario, onLogout }) {
           )}
         </div>
       </section>
+
+      {profilePhotoOpen && (
+        <ProfilePhotoModal
+          user={usuario}
+          onClose={() => setProfilePhotoOpen(false)}
+          onUpdated={(updatedUser) => onUserChange?.(updatedUser)}
+        />
+      )}
     </main>
   )
 }
@@ -1118,7 +1364,13 @@ export default function App() {
   }
 
   if (usuario) {
-    return <HomeScreen usuario={usuario} onLogout={() => setUsuario(null)} />
+    return (
+      <HomeScreen
+        usuario={usuario}
+        onLogout={() => setUsuario(null)}
+        onUserChange={setUsuario}
+      />
+    )
   }
 
   return <LoginScreen onLogin={setUsuario} />
