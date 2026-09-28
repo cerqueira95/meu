@@ -28,4 +28,4 @@ jobs:
         run: npm run build
 
       - name: Check server functions
-        run: node --check api/health.js && node --check api/auth/login.js && node --check api/auth/me.js && node --check api/auth/logout.js && node --check api/auth/quick-login.js && node --check api/_lib/db.js && node --check api/_lib/session.js && node --check api/users/index.js && node --check api/users/update.js
+        run: node --check api/health.js && node --check api/auth/login.js && node --check api/auth/me.js && node --check api/auth/logout.js && node --check api/auth/quick-login.js && node --check api/_lib/db.js && node --check api/_lib/session.js && node --check api/users/index.js && node --check api/users/update.js && node --check api/news/index.js && node --check api/news/comment.js && node --check api/news/react.js
