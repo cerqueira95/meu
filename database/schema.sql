@@ -128,3 +128,51 @@ CREATE INDEX IF NOT EXISTS idx_acessos_rapidos_usuario
 
 CREATE INDEX IF NOT EXISTS idx_acessos_rapidos_expira
     ON acessos_rapidos (expira_em);
+
+
+CREATE TABLE IF NOT EXISTS armazem_publicacoes (
+    id BIGSERIAL PRIMARY KEY,
+    autor_id BIGINT NOT NULL REFERENCES usuarios(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    titulo VARCHAR(180) NOT NULL,
+    conteudo TEXT NOT NULL,
+    imagem_data TEXT,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_armazem_publicacoes_data
+    ON armazem_publicacoes (criado_em DESC);
+
+CREATE TABLE IF NOT EXISTS armazem_comentarios (
+    id BIGSERIAL PRIMARY KEY,
+    publicacao_id BIGINT NOT NULL REFERENCES armazem_publicacoes(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    usuario_id BIGINT NOT NULL REFERENCES usuarios(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    texto VARCHAR(1000) NOT NULL,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_armazem_comentarios_publicacao
+    ON armazem_comentarios (publicacao_id, criado_em);
+
+CREATE TABLE IF NOT EXISTS armazem_reacoes (
+    id BIGSERIAL PRIMARY KEY,
+    publicacao_id BIGINT NOT NULL REFERENCES armazem_publicacoes(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    usuario_id BIGINT NOT NULL REFERENCES usuarios(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    tipo VARCHAR(20) NOT NULL
+        CHECK (tipo IN ('curtir', 'parabens', 'importante')),
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (publicacao_id, usuario_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_armazem_reacoes_publicacao
+    ON armazem_reacoes (publicacao_id);
