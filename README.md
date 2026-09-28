@@ -1,63 +1,95 @@
-# Meu Projeto
+# Warehouse
 
-Base full-stack com:
+Aplicação full-stack para operação de armazém.
 
-- React 19 + Vite 8 no frontend
-- PHP 8.2+ como API
-- MySQL 8 / MariaDB compatível
-- Estrutura preparada para HostGator
-- Frontend preparado para desenvolvimento local e deploy separado
+## Stack
+
+- React 19
+- Vite 8
+- Vercel Functions com Node.js
+- Neon PostgreSQL
+- Sessão autenticada por cookie HttpOnly
+- Login por CPF + senha
+
+## Arquitetura
+
+```text
+React + Vite
+     ↓
+Vercel
+     ↓
+/api/*
+     ↓
+Node.js Functions
+     ↓
+Neon PostgreSQL
+```
 
 ## Estrutura
 
 ```text
 .
-├── frontend/           # React + Vite
-├── backend/            # API PHP
-├── database/           # SQL inicial
-└── .github/workflows/  # validações de CI
+├── frontend/
+│   ├── api/            # Vercel Functions
+│   ├── src/            # React
+│   ├── package.json
+│   └── vite.config.js
+├── database/
+│   └── schema.sql      # PostgreSQL / Neon
+└── .github/workflows/
 ```
 
-## Desenvolvimento
+## Vercel
 
-### Frontend
+O projeto deve usar:
 
-```bash
-cd frontend
-npm install
-cp .env.example .env
-npm run dev
+```text
+Root Directory: frontend
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
 ```
 
-### Backend
+A integração Neon deve fornecer uma variável de ambiente compatível com:
 
-```bash
-cd backend
-composer install
-cp .env.example .env
-php -S localhost:8000 -t public
+```text
+DATABASE_URL
 ```
 
-A API estará em `http://localhost:8000`.
+Também são aceitas:
 
-### Banco
+```text
+POSTGRES_URL
+POSTGRES_PRISMA_URL
+```
 
-Crie o banco MySQL e execute:
+## Banco
+
+Execute o conteúdo de:
 
 ```text
 database/schema.sql
 ```
 
-Depois configure as credenciais somente em `backend/.env`.
+no banco Neon.
+
+O script cria:
+
+- usuarios
+- login_logs
+- configuracoes
+- sessoes
+- usuário administrador inicial
+
+## API
+
+```text
+POST /api/auth/login
+GET  /api/auth/me
+POST /api/auth/logout
+GET  /api/health
+```
 
 ## Segurança
 
-Nunca envie para o GitHub:
-
-- `.env`
-- senhas do MySQL
-- tokens
-- chaves de API
-- credenciais da HostGator
-
-Use apenas os arquivos `.env.example` como modelo.
+Nunca versione credenciais, tokens ou connection strings em arquivos do Git.
