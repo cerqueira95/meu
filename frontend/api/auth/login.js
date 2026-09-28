@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { sql } from '../_lib/db.js'
 import {
+  createQuickAccess,
   createSession,
   getClientIp,
   publicUser,
@@ -26,12 +27,12 @@ export default async function handler(req, res) {
       })
     }
 
-    const rows = await sql\`
+    const rows = await sql`
       SELECT *
       FROM usuarios
-      WHERE cpf = \${cpf}
+      WHERE cpf = ${cpf}
       LIMIT 1
-    \`
+    `
 
     const usuario = rows[0]
 
@@ -72,12 +73,12 @@ export default async function handler(req, res) {
     }
 
     if (usuario.bloqueado_ate) {
-      await sql\`
+      await sql`
         UPDATE usuarios
         SET tentativas_login = 0,
             bloqueado_ate = NULL
-        WHERE id = \${usuario.id}
-      \`
+        WHERE id = ${usuario.id}
+      `
 
       usuario.tentativas_login = 0
       usuario.bloqueado_ate = null
@@ -97,28 +98,35 @@ export default async function handler(req, res) {
 
     const ip = getClientIp(req)
 
-    await sql\`
+    await sql`
       UPDATE usuarios
       SET tentativas_login = 0,
           bloqueado_ate = NULL,
           ultimo_login = NOW(),
-          ultimo_ip = \${ip}
-      WHERE id = \${usuario.id}
-    \`
+          ultimo_ip = ${ip}
+      WHERE id = ${usuario.id}
+    `
 
-    await sql\`
+    await sql`
       DELETE FROM sessoes
-      WHERE usuario_id = \${usuario.id}
+      WHERE usuario_id = ${usuario.id}
         AND expira_em <= NOW()
-    \`
+    `
 
     await createSession(usuario.id, req, res)
+    const quickAccess = await createQuickAccess(usuario.id, req)
     await logAttempt(usuario.id, cpf, true, 'LOGIN_OK', req)
 
     return res.status(200).json({
       status: 'ok',
       message: 'Login realizado com sucesso.',
       usuario: publicUser(usuario),
+      quickAccess: {
+        token: quickAccess.token,
+        nome: usuario.nome,
+        cpf: publicUser(usuario).cpf,
+        expiresAt: quickAccess.expiresAt,
+      },
     })
   } catch (error) {
     console.error('login_error', error)
@@ -140,30 +148,30 @@ async function registerFailedAttempt(usuario) {
       Date.now() + tempoBloqueio * 60 * 1000,
     ).toISOString()
 
-    await sql\`
+    await sql`
       UPDATE usuarios
       SET tentativas_login = 0,
-          bloqueado_ate = \${bloqueadoAte}
-      WHERE id = \${usuario.id}
-    \`
+          bloqueado_ate = ${bloqueadoAte}
+      WHERE id = ${usuario.id}
+    `
 
     return
   }
 
-  await sql\`
+  await sql`
     UPDATE usuarios
-    SET tentativas_login = \${tentativas}
-    WHERE id = \${usuario.id}
-  \`
+    SET tentativas_login = ${tentativas}
+    WHERE id = ${usuario.id}
+  `
 }
 
 async function configInt(chave, fallback) {
-  const rows = await sql\`
+  const rows = await sql`
     SELECT valor
     FROM configuracoes
-    WHERE chave = \${chave}
+    WHERE chave = ${chave}
     LIMIT 1
-  \`
+  `
 
   const value = Number(rows[0]?.valor)
 
@@ -174,7 +182,7 @@ async function logAttempt(usuarioId, cpf, sucesso, motivo, req) {
   const ip = getClientIp(req)
   const userAgent = String(req.headers['user-agent'] || '').slice(0, 500)
 
-  await sql\`
+  await sql`
     INSERT INTO login_logs (
       usuario_id,
       cpf_informado,
@@ -184,14 +192,14 @@ async function logAttempt(usuarioId, cpf, sucesso, motivo, req) {
       user_agent
     )
     VALUES (
-      \${usuarioId},
-      \${cpf},
-      \${sucesso},
-      \${motivo},
-      \${ip},
-      \${userAgent}
+      ${usuarioId},
+      ${cpf},
+      ${sucesso},
+      ${motivo},
+      ${ip},
+      ${userAgent}
     )
-  \`
+  `
 }
 
 function onlyDigits(value) {
