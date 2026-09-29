@@ -1026,10 +1026,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   const canUseActivities = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase())
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
-    { id: 'armazem', label: 'Armazém', icon: 'armazem' },
     { id: 'news', label: 'Armazém New', icon: 'news' },
-    { id: 'rotas', label: 'Rotas', icon: 'rotas' },
-    { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
     ...(canUseActivities ? [{ id: 'atividades', label: 'Atividades', icon: 'atividades' }] : []),
     ...(isAdmin ? [{ id: 'aprovar-atividades', label: 'Aprovar atividades', icon: 'atividades' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
