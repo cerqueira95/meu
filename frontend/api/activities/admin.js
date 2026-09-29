@@ -96,10 +96,31 @@ export default async function handler(req, res) {
           WHERE id = ${id}
         `
 
+        const approvedBatch = await loadActivityBatch(id)
+
+        for (const participant of approvedBatch.participantes) {
+          await sql`
+            INSERT INTO atividade_notificacoes (
+              usuario_id,
+              lancamento_id,
+              tipo,
+              titulo,
+              mensagem
+            )
+            VALUES (
+              ${participant.usuario_id},
+              ${id},
+              'aprovado',
+              ${`${approvedBatch.atividade_nome} aprovado`},
+              ${`Seu lançamento ${approvedBatch.atividade_nome} #${id} foi aprovado por ${admin.nome}.`}
+            )
+          `
+        }
+
         return res.status(200).json({
           status: 'ok',
           message: 'Atividade aprovada para todos os participantes.',
-          lancamento: await loadActivityBatch(id),
+          lancamento: approvedBatch,
         })
       }
 
@@ -133,10 +154,31 @@ export default async function handler(req, res) {
           WHERE id = ${id}
         `
 
+        const rejectedBatch = await loadActivityBatch(id)
+
+        for (const participant of rejectedBatch.participantes) {
+          await sql`
+            INSERT INTO atividade_notificacoes (
+              usuario_id,
+              lancamento_id,
+              tipo,
+              titulo,
+              mensagem
+            )
+            VALUES (
+              ${participant.usuario_id},
+              ${id},
+              'reprovado',
+              ${`${rejectedBatch.atividade_nome} reprovado`},
+              ${`Seu lançamento ${rejectedBatch.atividade_nome} #${id} foi reprovado por ${admin.nome}. Motivo: ${motivo}`}
+            )
+          `
+        }
+
         return res.status(200).json({
           status: 'ok',
           message: 'Atividade reprovada para todos os participantes.',
-          lancamento: await loadActivityBatch(id),
+          lancamento: rejectedBatch,
         })
       }
 
