@@ -2,7 +2,7 @@ name: Coleta diária WMS
 
 on:
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "17 12 * * *"
   workflow_dispatch:
 
 jobs:
