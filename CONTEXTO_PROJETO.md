@@ -198,3 +198,28 @@ Valores iniciais cadastrados:
 - Amarração: R$ 5,00.
 
 O 5S já passou a buscar o valor no catálogo. Novos módulos devem usar `getActivityConfig(chave)` para obter o valor configurado pelo ADM.
+
+
+### Atividade Amarração
+
+A atividade Amarração foi migrada para o Warehouse com base no fluxo PHP legado.
+
+Regras preservadas:
+- Mapa/OP obrigatório e normalizado em maiúsculas;
+- placa do cavalo obrigatória e normalizada para letras/números;
+- foto de evidência obrigatória;
+- segundo ajudante opcional;
+- quando há segundo ajudante, o mesmo lançamento agrupa os dois participantes;
+- Mapa/OP não pode ser repetido em outro lançamento não reprovado;
+- valor vem do catálogo administrativo de atividades (inicialmente R$ 5,00);
+- aprovação/reprovação continua sendo feita uma única vez por grupo;
+- todos os participantes recebem as notificações já existentes no módulo Atividades.
+
+Arquivos:
+- \`frontend/api/activities/amarracao.js\`
+- \`frontend/src/components/AmarracaoScreen.jsx\`
+
+Rota:
+- \`GET/POST /api/activities/amarracao\`
+
+Os detalhes específicos (Mapa/OP, placa, segundo ajudante) ficam em \`atividade_lancamentos.detalhes\` (JSONB).
