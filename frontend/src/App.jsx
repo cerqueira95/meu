@@ -8,6 +8,7 @@ import WmsSettingsScreen from './components/WmsSettingsScreen.jsx'
 import EscalonadaScreen from './components/EscalonadaScreen.jsx'
 import EscalonadaAdminScreen from './components/EscalonadaAdminScreen.jsx'
 import ActivitiesScreen from './components/ActivitiesScreen.jsx'
+import ActivityValuesScreen from './components/ActivityValuesScreen.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -1029,6 +1030,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     { id: 'news', label: 'Armazém New', icon: 'news' },
     ...(canUseActivities ? [{ id: 'atividades', label: 'Atividades', icon: 'atividades' }] : []),
     ...(isAdmin ? [{ id: 'aprovar-atividades', label: 'Aprovar atividades', icon: 'atividades' }] : []),
+    ...(isAdmin ? [{ id: 'valores-atividades', label: 'Valores das atividades', icon: 'configuracoes' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     ...(isAdmin ? [{ id: 'relatorios', label: 'Relatórios', icon: 'relatorios' }] : []),
@@ -1101,6 +1103,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
     relatorios: { title: 'Relatórios', description: 'Indicadores consolidados e exportações.', icon: 'relatorios' },
     'aprovar-atividades': { title: 'Aprovar atividades', description: 'Fila central para revisar, editar, aprovar ou reprovar lançamentos.', icon: 'atividades' },
+    'valores-atividades': { title: 'Valores das atividades', description: 'Configuração dos valores unitários das atividades.', icon: 'configuracoes' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
 
@@ -1443,6 +1446,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <ActivitiesScreen currentUser={usuario} />
           ) : activeSection === 'aprovar-atividades' && isAdmin ? (
             <ActivitiesScreen currentUser={usuario} initialView="approvals" />
+          ) : activeSection === 'valores-atividades' && isAdmin ? (
+            <ActivityValuesScreen />
           ) : activeSection === 'escalonada' ? (
             <EscalonadaScreen />
           ) : activeSection === 'relatorios' && isAdmin ? (
