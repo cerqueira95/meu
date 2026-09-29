@@ -2,9 +2,9 @@ import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
 import {
   FIVE_S_OPTIONS,
-  FIVE_S_UNIT_VALUE,
   currentBahiaDate,
   ensureActivitiesSchema,
+  getActivityConfig,
   loadActivityBatch,
   optionMap5s,
   validImageData,
@@ -20,6 +20,11 @@ export default async function handler(req, res) {
     await ensureActivitiesSchema()
 
     if (req.method === 'GET') {
+      const config = await getActivityConfig('5s')
+      if (!config?.ativo) {
+        return res.status(404).json({ status: 'error', message: 'Atividade 5S indisponível.' })
+      }
+
       const [people, recent] = await Promise.all([
         sql`
           SELECT id, nome, cpf, turno, perfil
@@ -50,7 +55,7 @@ export default async function handler(req, res) {
         atividade: {
           chave: '5s',
           nome: '5S',
-          valor_unitario: FIVE_S_UNIT_VALUE,
+          valor_unitario: config.valor_unitario,
           exige_foto: true,
         },
         opcoes: FIVE_S_OPTIONS.map(([chave, nome]) => ({
@@ -73,6 +78,11 @@ export default async function handler(req, res) {
       const validation = validatePayload(payload)
       if (validation) {
         return res.status(400).json({ status: 'error', message: validation })
+      }
+
+      const config = await getActivityConfig('5s')
+      if (!config?.ativo) {
+        return res.status(404).json({ status: 'error', message: 'Atividade 5S indisponível.' })
       }
 
       const options = optionMap5s()
@@ -191,7 +201,7 @@ export default async function handler(req, res) {
             ${dataAtividade},
             ${principal.id},
             ${principal.nome},
-            ${FIVE_S_UNIT_VALUE},
+            ${config.valor_unitario},
             ${payload.observacao || null},
             'pendente'
           )
@@ -234,7 +244,7 @@ export default async function handler(req, res) {
               ${lancamentoId},
               ${item.opcao_chave},
               ${item.opcao_nome},
-              ${FIVE_S_UNIT_VALUE},
+              ${config.valor_unitario},
               ${item.evidencia_foto}
             )
           `
