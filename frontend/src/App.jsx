@@ -1016,6 +1016,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   const [recentNews, setRecentNews] = useState([])
   const [unreadEscalonada, setUnreadEscalonada] = useState(0)
   const [escalonadaNotifications, setEscalonadaNotifications] = useState([])
+  const [unreadActivities, setUnreadActivities] = useState(0)
+  const [activityNotifications, setActivityNotifications] = useState([])
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false)
   const notificationRef = useRef(null)
@@ -1029,6 +1031,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     { id: 'rotas', label: 'Rotas', icon: 'rotas' },
     { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
     ...(canUseActivities ? [{ id: 'atividades', label: 'Atividades', icon: 'atividades' }] : []),
+    ...(isAdmin ? [{ id: 'aprovar-atividades', label: 'Aprovar atividades', icon: 'atividades' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     ...(isAdmin ? [{ id: 'relatorios', label: 'Relatórios', icon: 'relatorios' }] : []),
@@ -1039,15 +1042,18 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 
     async function refreshUnread() {
       try {
-        const [newsData, escalonadaData] = await Promise.all([
+        const [newsData, escalonadaData, activitiesData] = await Promise.all([
           api.get('/api/news'),
           api.get('/api/escalonada'),
+          canUseActivities ? api.get('/api/activities/notifications') : Promise.resolve({ nao_lidas: 0, notificacoes: [] }),
         ])
         if (active) {
           setUnreadNews(Number(newsData.nao_lidas || 0))
           setRecentNews((newsData.publicacoes || []).slice(0, 5))
           setUnreadEscalonada(Number(escalonadaData.nao_lidas || 0))
           setEscalonadaNotifications((escalonadaData.notificacoes || []).slice(0, 5))
+          setUnreadActivities(Number(activitiesData.nao_lidas || 0))
+          setActivityNotifications((activitiesData.notificacoes || []).slice(0, 6))
         }
       } catch {
         // A ausência temporária do feed não bloqueia a navegação.
@@ -1097,6 +1103,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     escalonada: { title: 'Minha Escalonada', description: 'Seu resultado diário e incentivo acumulado.', icon: 'escalonada' },
     usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
     relatorios: { title: 'Relatórios', description: 'Indicadores consolidados e exportações.', icon: 'relatorios' },
+    'aprovar-atividades': { title: 'Aprovar atividades', description: 'Fila central para revisar, editar, aprovar ou reprovar lançamentos.', icon: 'atividades' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
 
@@ -1116,6 +1123,25 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
       setUnreadNews(0)
     } catch {
       // Mantém a navegação funcionando mesmo se a atualização do indicador falhar.
+    }
+  }
+
+  async function markActivityRead(id) {
+    try {
+      await api.post('/api/activities/notifications', id ? { id } : {})
+      if (id) {
+        setActivityNotifications((current) =>
+          current.map((item) => item.id === id ? { ...item, lida_em: new Date().toISOString() } : item),
+        )
+        setUnreadActivities((current) => Math.max(0, current - 1))
+      } else {
+        setActivityNotifications((current) =>
+          current.map((item) => ({ ...item, lida_em: item.lida_em || new Date().toISOString() })),
+        )
+        setUnreadActivities(0)
+      }
+    } catch {
+      // A navegação continua mesmo se a leitura não puder ser registrada.
     }
   }
 
@@ -1150,6 +1176,10 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     if (section === 'escalonada') {
       markEscalonadaRead()
     }
+
+    if (section === 'atividades') {
+      markActivityRead()
+    }
   }
 
   async function handleLogout() {
@@ -1164,7 +1194,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   }
 
   const section = sectionMap[activeSection] || sectionMap.painel
-  const totalUnread = unreadNews + unreadEscalonada
+  const totalUnread = unreadNews + unreadEscalonada + unreadActivities
 
   return (
     <main className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
@@ -1301,6 +1331,27 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
                   </div>
 
                   <div className="notification-popover-body">
+                    {activityNotifications.map((item) => (
+                      <button
+                        className={`notification-item ${!item.lida_em ? 'unread' : ''}`}
+                        type="button"
+                        key={`activity-${item.id}`}
+                        onClick={() => {
+                          markActivityRead(item.id)
+                          navigate('atividades')
+                        }}
+                      >
+                        <span className="notification-item-icon">
+                          {item.tipo === 'reprovado' ? '!' : '✓'}
+                        </span>
+                        <span className="notification-item-copy">
+                          <strong>{item.titulo}</strong>
+                          <small>{item.mensagem}</small>
+                        </span>
+                        {!item.lida_em && <span className="notification-new-dot" />}
+                      </button>
+                    ))}
+
                     {escalonadaNotifications.map((item) => (
                       <button
                         className={`notification-item ${!item.lida_em ? 'unread' : ''}`}
@@ -1320,7 +1371,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
                       </button>
                     ))}
 
-                    {recentNews.length === 0 && escalonadaNotifications.length === 0 ? (
+                    {recentNews.length === 0 && escalonadaNotifications.length === 0 && activityNotifications.length === 0 ? (
                       <div className="notification-empty">
                         <span>✓</span>
                         <div>
@@ -1393,6 +1444,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <NewsScreen currentUser={usuario} />
           ) : activeSection === 'atividades' && canUseActivities ? (
             <ActivitiesScreen currentUser={usuario} />
+          ) : activeSection === 'aprovar-atividades' && isAdmin ? (
+            <ActivitiesScreen currentUser={usuario} initialView="approvals" />
           ) : activeSection === 'escalonada' ? (
             <EscalonadaScreen />
           ) : activeSection === 'relatorios' && isAdmin ? (
