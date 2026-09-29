@@ -178,3 +178,23 @@ Tabela nova: `atividade_notificacoes`.
 Rota: `GET/POST /api/activities/notifications`.
 
 A interface de Atividades/5S possui regras responsivas específicas e deve continuar funcional no mobile.
+
+
+### Valores das atividades editáveis pelo ADM
+
+Foi criada uma tela administrativa chamada `Valores das atividades`.
+
+Objetivo:
+- permitir alterar valores unitários sem editar código;
+- manter os lançamentos antigos com o valor histórico salvo no momento do lançamento;
+- fazer novos lançamentos usarem o valor vigente no catálogo.
+
+Tabela: `atividade_catalogo`.
+Rota: `GET/POST /api/activities/settings`.
+Tela: `frontend/src/components/ActivityValuesScreen.jsx`.
+
+Valores iniciais cadastrados:
+- 5S: R$ 1,00;
+- Amarração: R$ 5,00.
+
+O 5S já passou a buscar o valor no catálogo. Novos módulos devem usar `getActivityConfig(chave)` para obter o valor configurado pelo ADM.
