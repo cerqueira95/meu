@@ -39,6 +39,7 @@ const routes = new Map([
   ['/api/cron/rateio', './api/cron/rateio.js'],
   ['/api/activities/5s', './api/activities/5s.js'],
   ['/api/activities/admin', './api/activities/admin.js'],
+  ['/api/activities/notifications', './api/activities/notifications.js'],
 ])
 
 const MIME_TYPES = {
