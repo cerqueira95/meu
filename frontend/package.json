@@ -10,6 +10,7 @@
     "dev": "vite",
     "dev:local": "concurrently -k -n API,WEB \"node --env-file=.env.local local-api-server.mjs\" \"vite\"",
     "build": "vite build",
+    "start": "node render-server.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

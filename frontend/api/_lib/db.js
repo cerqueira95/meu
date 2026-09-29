@@ -20,7 +20,7 @@ function getClient() {
 
   if (!connectionString) {
     throw new Error(
-      'Banco não conectado a este projeto Vercel: DATABASE_URL ausente.',
+      'Banco não conectado: DATABASE_URL ausente.',
     )
   }
 

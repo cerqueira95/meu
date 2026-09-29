@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       status: 'ok',
-      message: 'API Vercel funcionando.',
+      message: 'API funcionando.',
       database: 'connected',
       timestamp: result[0]?.now ?? new Date().toISOString(),
     })
