@@ -55,9 +55,23 @@ await sql`
   )
 `
 
+await sql`ALTER TABLE wms_item_registros ADD COLUMN IF NOT EXISTS data_entrega DATE`
+
+await sql`
+  UPDATE wms_item_registros
+  SET data_entrega = TO_DATE(SPLIT_PART(entrega, ' ', 1), 'DD/MM/YYYY')
+  WHERE data_entrega IS NULL
+    AND entrega ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}'
+`
+
 await sql`
   CREATE INDEX IF NOT EXISTS idx_wms_item_data
   ON wms_item_registros (data_ref DESC)
+`
+
+await sql`
+  CREATE INDEX IF NOT EXISTS idx_wms_item_data_entrega
+  ON wms_item_registros (data_entrega DESC)
 `
 
 await sql`
