@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       status: 'ok',
-      message: `Coleta concluída: ${result.count} registros do dia ${result.date}.`,
+      message: `Coleta concluída: ${result.count} registros do Rateio, ${result.itemCount || 0} do WMS Item e ${result.escalonadaCount || 0} resultados de escalonada em ${result.date}.`,
       ...result,
     })
   } catch (error) {

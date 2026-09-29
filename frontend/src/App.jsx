@@ -5,6 +5,7 @@ import HomeNewsPreview from './components/HomeNewsPreview.jsx'
 import UserAvatar from './components/UserAvatar.jsx'
 import ProfilePhotoModal, { compressProfilePhoto } from './components/ProfilePhotoModal.jsx'
 import WmsSettingsScreen from './components/WmsSettingsScreen.jsx'
+import EscalonadaScreen from './components/EscalonadaScreen.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -415,6 +416,12 @@ function AppIcon({ name }) {
     relatorios: (
       <>
         <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+      </>
+    ),
+    escalonada: (
+      <>
+        <path d="M4 19h16M6 16l4-5 3 3 5-7" />
+        <path d="M16 7h2v2" />
       </>
     ),
     configuracoes: (
@@ -991,6 +998,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [unreadNews, setUnreadNews] = useState(0)
   const [recentNews, setRecentNews] = useState([])
+  const [unreadEscalonada, setUnreadEscalonada] = useState(0)
+  const [escalonadaNotifications, setEscalonadaNotifications] = useState([])
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false)
   const notificationRef = useRef(null)
@@ -1002,6 +1011,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     { id: 'news', label: 'Armazém New', icon: 'news' },
     { id: 'rotas', label: 'Rotas', icon: 'rotas' },
     { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
+    { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
   ]
@@ -1011,10 +1021,15 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 
     async function refreshUnread() {
       try {
-        const data = await api.get('/api/news')
+        const [newsData, escalonadaData] = await Promise.all([
+          api.get('/api/news'),
+          api.get('/api/escalonada'),
+        ])
         if (active) {
-          setUnreadNews(Number(data.nao_lidas || 0))
-          setRecentNews((data.publicacoes || []).slice(0, 5))
+          setUnreadNews(Number(newsData.nao_lidas || 0))
+          setRecentNews((newsData.publicacoes || []).slice(0, 5))
+          setUnreadEscalonada(Number(escalonadaData.nao_lidas || 0))
+          setEscalonadaNotifications((escalonadaData.notificacoes || []).slice(0, 5))
         }
       } catch {
         // A ausência temporária do feed não bloqueia a navegação.
@@ -1060,6 +1075,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     news: { title: 'Armazém New', description: 'Notícias, comunicados e reconhecimentos do armazém.', icon: 'news' },
     rotas: { title: 'Rotas', description: 'Acompanhamento das rotas e entregas.', icon: 'rotas' },
     devolucoes: { title: 'Devoluções', description: 'Gestão e análise das devoluções da operação.', icon: 'devolucoes' },
+    escalonada: { title: 'Minha Escalonada', description: 'Seu resultado diário e incentivo acumulado.', icon: 'escalonada' },
     usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
     relatorios: { title: 'Relatórios', description: 'Indicadores consolidados e exportações.', icon: 'relatorios' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
@@ -1084,6 +1100,25 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     }
   }
 
+  async function markEscalonadaRead(id) {
+    try {
+      await api.post('/api/escalonada/read', id ? { id } : {})
+      if (id) {
+        setEscalonadaNotifications((current) =>
+          current.map((item) => item.id === id ? { ...item, lida_em: new Date().toISOString() } : item),
+        )
+        setUnreadEscalonada((current) => Math.max(0, current - 1))
+      } else {
+        setEscalonadaNotifications((current) =>
+          current.map((item) => ({ ...item, lida_em: item.lida_em || new Date().toISOString() })),
+        )
+        setUnreadEscalonada(0)
+      }
+    } catch {
+      // A navegação continua mesmo se a leitura não puder ser registrada.
+    }
+  }
+
   function navigate(section) {
     setActiveSection(section)
     setMobileOpen(false)
@@ -1091,6 +1126,10 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 
     if (section === 'news') {
       markNewsRead()
+    }
+
+    if (section === 'escalonada') {
+      markEscalonadaRead()
     }
   }
 
@@ -1106,6 +1145,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   }
 
   const section = sectionMap[activeSection] || sectionMap.painel
+  const totalUnread = unreadNews + unreadEscalonada
 
   return (
     <main className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
@@ -1214,16 +1254,16 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
           <div className="topbar-actions">
             <div className="notification-center" ref={notificationRef}>
               <button
-                className={`news-notification-button ${unreadNews > 0 ? 'has-news' : ''}`}
+                className={`news-notification-button ${totalUnread > 0 ? 'has-news' : ''}`}
                 type="button"
                 onClick={() => setNotificationOpen((current) => !current)}
                 aria-expanded={notificationOpen}
-                aria-label={unreadNews > 0 ? `${unreadNews} novas publicações` : 'Abrir notificações'}
+                aria-label={totalUnread > 0 ? `${totalUnread} notificações novas` : 'Abrir notificações'}
                 title="Notificações"
               >
                 <AppIcon name="bell" />
-                {unreadNews > 0 && (
-                  <span>{unreadNews > 9 ? '9+' : unreadNews}</span>
+                {totalUnread > 0 && (
+                  <span>{totalUnread > 9 ? '9+' : totalUnread}</span>
                 )}
               </button>
 
@@ -1233,16 +1273,35 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
                     <div>
                       <span className="dashboard-kicker">NOTIFICAÇÕES</span>
                       <strong>
-                        {unreadNews > 0
-                          ? `${unreadNews} ${unreadNews === 1 ? 'novidade' : 'novidades'} para você`
+                        {totalUnread > 0
+                          ? `${totalUnread} ${totalUnread === 1 ? 'novidade' : 'novidades'} para você`
                           : 'Tudo em dia'}
                       </strong>
                     </div>
-                    <span className={`notification-status-dot ${unreadNews > 0 ? 'active' : ''}`} />
+                    <span className={`notification-status-dot ${totalUnread > 0 ? 'active' : ''}`} />
                   </div>
 
                   <div className="notification-popover-body">
-                    {recentNews.length === 0 ? (
+                    {escalonadaNotifications.map((item) => (
+                      <button
+                        className={`notification-item ${!item.lida_em ? 'unread' : ''}`}
+                        type="button"
+                        key={`esc-${item.id}`}
+                        onClick={() => {
+                          markEscalonadaRead(item.id)
+                          navigate('escalonada')
+                        }}
+                      >
+                        <span className="notification-item-icon">%</span>
+                        <span className="notification-item-copy">
+                          <strong>{item.titulo}</strong>
+                          <small>{item.mensagem}</small>
+                        </span>
+                        {!item.lida_em && <span className="notification-new-dot" />}
+                      </button>
+                    ))}
+
+                    {recentNews.length === 0 && escalonadaNotifications.length === 0 ? (
                       <div className="notification-empty">
                         <span>✓</span>
                         <div>
@@ -1313,6 +1372,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <UsersScreen currentUser={usuario} />
           ) : activeSection === 'news' ? (
             <NewsScreen currentUser={usuario} />
+          ) : activeSection === 'escalonada' ? (
+            <EscalonadaScreen />
           ) : activeSection === 'configuracoes' && isAdmin ? (
             <WmsSettingsScreen />
           ) : (
