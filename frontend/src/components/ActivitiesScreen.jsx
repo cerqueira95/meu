@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api.js'
+import AmarracaoScreen from './AmarracaoScreen.jsx'
 import './ActivitiesScreen.css'
 
 function money(value) {
@@ -77,7 +78,7 @@ function StatusBadge({ status }) {
   )
 }
 
-function ActivityCatalog({ isAdmin, onOpen5s, onOpenApprovals }) {
+function ActivityCatalog({ isAdmin, onOpen5s, onOpenAmarracao, onOpenApprovals }) {
   return (
     <section className="activities-page">
       <div className="activities-hero">
@@ -117,6 +118,21 @@ function ActivityCatalog({ isAdmin, onOpen5s, onOpenApprovals }) {
           <span className="activity-module-arrow">→</span>
         </button>
 
+        <button className="activity-module-card available" type="button" onClick={onOpenAmarracao}>
+          <span className="activity-module-icon">🔗</span>
+          <div className="activity-module-copy">
+            <div className="activity-module-title">
+              <h2>Amarração</h2>
+              <span>Disponível</span>
+            </div>
+            <p>
+              Lançamento por Mapa/OP com placa do cavalo, segundo ajudante opcional
+              e foto obrigatória da evidência.
+            </p>
+          </div>
+          <span className="activity-module-arrow">→</span>
+        </button>
+
         <article className="activity-module-card coming">
           <span className="activity-module-icon">＋</span>
           <div className="activity-module-copy">
@@ -125,8 +141,8 @@ function ActivityCatalog({ isAdmin, onOpen5s, onOpenApprovals }) {
               <span>Em breve</span>
             </div>
             <p>
-              Repack, Amarração, Selo Vermelho e os demais módulos serão adicionados
-              seguindo o mesmo padrão.
+              Repack, Selo Vermelho e os demais módulos serão adicionados seguindo
+              o mesmo padrão.
             </p>
           </div>
         </article>
@@ -974,6 +990,10 @@ export default function ActivitiesScreen({ currentUser, initialView = 'catalog' 
     return <FiveSForm currentUser={currentUser} onBack={() => setView('catalog')} />
   }
 
+  if (view === 'amarracao') {
+    return <AmarracaoScreen currentUser={currentUser} onBack={() => setView('catalog')} />
+  }
+
   if (view === 'approvals' && isAdmin) {
     return <ApprovalsScreen onBack={() => setView('catalog')} />
   }
@@ -982,6 +1002,7 @@ export default function ActivitiesScreen({ currentUser, initialView = 'catalog' 
     <ActivityCatalog
       isAdmin={isAdmin}
       onOpen5s={() => setView('5s')}
+      onOpenAmarracao={() => setView('amarracao')}
       onOpenApprovals={() => setView('approvals')}
     />
   )
