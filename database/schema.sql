@@ -257,6 +257,7 @@ CREATE TABLE IF NOT EXISTS wms_item_registros (
     mapa VARCHAR(80),
     palete VARCHAR(120),
     entrega VARCHAR(40),
+    data_entrega DATE,
     caixa VARCHAR(120),
     area_separacao VARCHAR(190),
     codigo_item VARCHAR(80),
@@ -272,8 +273,19 @@ CREATE TABLE IF NOT EXISTS wms_item_registros (
     coletado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE wms_item_registros
+    ADD COLUMN IF NOT EXISTS data_entrega DATE;
+
+UPDATE wms_item_registros
+SET data_entrega = TO_DATE(SPLIT_PART(entrega, ' ', 1), 'DD/MM/YYYY')
+WHERE data_entrega IS NULL
+  AND entrega ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}';
+
 CREATE INDEX IF NOT EXISTS idx_wms_item_data
     ON wms_item_registros (data_ref DESC);
+
+CREATE INDEX IF NOT EXISTS idx_wms_item_data_entrega
+    ON wms_item_registros (data_entrega DESC);
 
 CREATE INDEX IF NOT EXISTS idx_wms_item_usuario
     ON wms_item_registros (usuario_login, data_ref DESC);
