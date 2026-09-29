@@ -29,11 +29,12 @@ export default async function handler(req, res) {
           ORDER BY nome
         `,
         sql`
-          SELECT id
-          FROM atividade_lancamentos
-          WHERE atividade_chave = '5s'
-            AND usuario_criador_id = ${usuario.id}
-          ORDER BY criado_em DESC
+          SELECT DISTINCT l.id
+          FROM atividade_lancamentos l
+          INNER JOIN atividade_lancamento_participantes p ON p.lancamento_id = l.id
+          WHERE l.atividade_chave = '5s'
+            AND p.usuario_id = ${usuario.id}
+          ORDER BY l.id DESC
           LIMIT 8
         `,
       ])
