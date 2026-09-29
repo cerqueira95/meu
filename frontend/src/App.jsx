@@ -6,6 +6,7 @@ import UserAvatar from './components/UserAvatar.jsx'
 import ProfilePhotoModal, { compressProfilePhoto } from './components/ProfilePhotoModal.jsx'
 import WmsSettingsScreen from './components/WmsSettingsScreen.jsx'
 import EscalonadaScreen from './components/EscalonadaScreen.jsx'
+import EscalonadaAdminScreen from './components/EscalonadaAdminScreen.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -1374,6 +1375,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <NewsScreen currentUser={usuario} />
           ) : activeSection === 'escalonada' ? (
             <EscalonadaScreen />
+          ) : activeSection === 'relatorios' && isAdmin ? (
+            <EscalonadaAdminScreen />
           ) : activeSection === 'configuracoes' && isAdmin ? (
             <WmsSettingsScreen />
           ) : (
