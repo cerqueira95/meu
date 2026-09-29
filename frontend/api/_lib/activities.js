@@ -95,6 +95,7 @@ async function createSchema() {
       usuario_criador_nome VARCHAR(180) NOT NULL,
       valor_unitario NUMERIC(10,2) NOT NULL DEFAULT 0,
       observacao TEXT,
+      detalhes JSONB NOT NULL DEFAULT '{}'::jsonb,
       status VARCHAR(20) NOT NULL DEFAULT 'pendente',
       motivo_reprovacao TEXT,
       aprovado_por_id BIGINT,
@@ -133,6 +134,11 @@ async function createSchema() {
       criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (lancamento_id, opcao_chave)
     )
+  `
+
+  await sql`
+    ALTER TABLE atividade_lancamentos
+    ADD COLUMN IF NOT EXISTS detalhes JSONB NOT NULL DEFAULT '{}'::jsonb
   `
 
   await sql`
@@ -183,6 +189,7 @@ export function serializeActivityBatch(row, participants = [], items = []) {
     usuario_criador_nome: row.usuario_criador_nome,
     valor_unitario: unitValue,
     observacao: row.observacao || '',
+    detalhes: row.detalhes || {},
     status: row.status,
     motivo_reprovacao: row.motivo_reprovacao || '',
     aprovado_por_nome: row.aprovado_por_nome || null,
