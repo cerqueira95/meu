@@ -130,7 +130,7 @@ export default function EscalonadaScreen() {
                   <th style={styles.th}>Dia</th>
                   <th style={styles.th}>Pontuação</th>
                   <th style={styles.th}>Valor base</th>
-                  <th style={styles.th}>Faixa</th>
+                  <th style={styles.th}>Situação</th>
                   <th style={styles.th}>Ganhou</th>
                   <th style={styles.th}>Total do dia</th>
                 </tr>
@@ -145,11 +145,16 @@ export default function EscalonadaScreen() {
                     <td style={styles.td}>{currency(row.valor_base)}</td>
                     <td style={styles.td}>
                       {row.pickpack ? (
-                        <span style={styles.pickPackBadge}>Pick&Pack</span>
+                        <span style={styles.pickPackGroup}>
+                          <span style={styles.pickPackBadge}>Pick&Pack</span>
+                          <small style={styles.pickPackCount}>
+                            {number(row.pickpack_qtd)} itens em Marketplace
+                          </small>
+                        </span>
                       ) : row.percentual > 0 ? (
                         <span style={styles.percentBadge}>{row.percentual}%</span>
                       ) : (
-                        <span style={styles.neutralBadge}>Sem faixa</span>
+                        <span style={styles.neutralBadge}>Não ganhou</span>
                       )}
                     </td>
                     <td style={styles.td}>
@@ -253,6 +258,11 @@ const styles = {
     color: '#18864b',
     fontWeight: 800,
   },
+  pickPackGroup: {
+    display: 'grid',
+    gap: 5,
+    justifyItems: 'start',
+  },
   pickPackBadge: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -261,6 +271,10 @@ const styles = {
     background: '#fff3d8',
     color: '#a86b00',
     fontWeight: 800,
+  },
+  pickPackCount: {
+    color: '#8a6a2d',
+    fontSize: 11,
   },
   neutralBadge: {
     display: 'inline-flex',
