@@ -555,6 +555,11 @@ function FiveSForm({ currentUser, onBack }) {
                 </div>
                 <span>{item.quantidade_areas} área(s) • {item.quantidade_participantes} pessoa(s)</span>
                 <StatusBadge status={item.status} />
+                {item.status === 'reprovado' && item.motivo_reprovacao && (
+                  <p className="activity-history-reason">
+                    <strong>Motivo:</strong> {item.motivo_reprovacao}
+                  </p>
+                )}
               </article>
             ))}
           </div>
@@ -957,9 +962,13 @@ function ApprovalsScreen({ onBack }) {
   )
 }
 
-export default function ActivitiesScreen({ currentUser }) {
-  const [view, setView] = useState('catalog')
+export default function ActivitiesScreen({ currentUser, initialView = 'catalog' }) {
+  const [view, setView] = useState(initialView)
   const isAdmin = String(currentUser?.perfil || '').toUpperCase() === 'ADM'
+
+  useEffect(() => {
+    setView(initialView)
+  }, [initialView])
 
   if (view === '5s') {
     return <FiveSForm currentUser={currentUser} onBack={() => setView('catalog')} />
