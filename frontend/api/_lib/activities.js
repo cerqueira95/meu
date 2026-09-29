@@ -1,7 +1,5 @@
 import { sql } from './db.js'
 
-export const FIVE_S_UNIT_VALUE = 1
-
 export const FIVE_S_OPTIONS = [
   ['rua-a', 'Rua A'],
   ['rua-l', 'Rua L'],
@@ -67,6 +65,26 @@ export function ensureActivitiesSchema() {
 }
 
 async function createSchema() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS atividade_catalogo (
+      id BIGSERIAL PRIMARY KEY,
+      chave VARCHAR(80) NOT NULL UNIQUE,
+      nome VARCHAR(160) NOT NULL,
+      valor_unitario NUMERIC(10,2) NOT NULL DEFAULT 0,
+      ativo BOOLEAN NOT NULL DEFAULT TRUE,
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`
+    INSERT INTO atividade_catalogo (chave, nome, valor_unitario, ativo)
+    VALUES
+      ('5s', '5S', 1.00, TRUE),
+      ('amarracao', 'Amarração', 5.00, TRUE)
+    ON CONFLICT (chave) DO NOTHING
+  `
+
   await sql`
     CREATE TABLE IF NOT EXISTS atividade_lancamentos (
       id BIGSERIAL PRIMARY KEY,
@@ -231,4 +249,47 @@ export function optionMap5s() {
 export function validImageData(value) {
   const image = String(value || '')
   return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(image) && image.length <= 900_000
+}
+
+
+export async function getActivityConfig(chave) {
+  await ensureActivitiesSchema()
+
+  const rows = await sql`
+    SELECT id, chave, nome, valor_unitario, ativo, atualizado_em
+    FROM atividade_catalogo
+    WHERE chave = ${chave}
+    LIMIT 1
+  `
+
+  const row = rows[0]
+  if (!row) return null
+
+  return {
+    id: Number(row.id),
+    chave: row.chave,
+    nome: row.nome,
+    valor_unitario: Number(row.valor_unitario || 0),
+    ativo: Boolean(row.ativo),
+    atualizado_em: row.atualizado_em,
+  }
+}
+
+export async function listActivityConfigs() {
+  await ensureActivitiesSchema()
+
+  const rows = await sql`
+    SELECT id, chave, nome, valor_unitario, ativo, atualizado_em
+    FROM atividade_catalogo
+    ORDER BY nome
+  `
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    chave: row.chave,
+    nome: row.nome,
+    valor_unitario: Number(row.valor_unitario || 0),
+    ativo: Boolean(row.ativo),
+    atualizado_em: row.atualizado_em,
+  }))
 }
