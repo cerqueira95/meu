@@ -131,6 +131,25 @@ async function createSchema() {
     CREATE INDEX IF NOT EXISTS idx_atividade_itens_opcao
     ON atividade_lancamento_itens(opcao_chave, lancamento_id)
   `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS atividade_notificacoes (
+      id BIGSERIAL PRIMARY KEY,
+      usuario_id BIGINT NOT NULL,
+      lancamento_id BIGINT NOT NULL REFERENCES atividade_lancamentos(id) ON DELETE CASCADE,
+      tipo VARCHAR(30) NOT NULL,
+      titulo VARCHAR(180) NOT NULL,
+      mensagem TEXT NOT NULL,
+      lida_em TIMESTAMPTZ,
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_atividade_notificacoes_usuario
+    ON atividade_notificacoes(usuario_id, lida_em, criado_em DESC)
+  `
 }
 
 export function serializeActivityBatch(row, participants = [], items = []) {
