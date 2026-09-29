@@ -25,7 +25,14 @@ export async function calculateEscalonadaForDate(date) {
         usuario_login,
         COUNT(*)::int AS quantidade
       FROM wms_item_registros
-      WHERE COALESCE(data_entrega, data_ref) = ${date}
+      WHERE COALESCE(
+              CASE
+                WHEN entrega ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}'
+                  THEN TO_DATE(SPLIT_PART(entrega, ' ', 1), 'DD/MM/YYYY')
+                ELSE NULL
+              END,
+              data_ref
+            ) = ${date}
         AND LOWER(TRIM(COALESCE(area_separacao, ''))) =
             LOWER(TRIM(${pickPackArea}))
       GROUP BY usuario_nome, usuario_login
