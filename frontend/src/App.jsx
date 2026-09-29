@@ -4,6 +4,7 @@ import NewsScreen from './components/NewsScreen.jsx'
 import HomeNewsPreview from './components/HomeNewsPreview.jsx'
 import UserAvatar from './components/UserAvatar.jsx'
 import ProfilePhotoModal, { compressProfilePhoto } from './components/ProfilePhotoModal.jsx'
+import WmsSettingsScreen from './components/WmsSettingsScreen.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -1312,6 +1313,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <UsersScreen currentUser={usuario} />
           ) : activeSection === 'news' ? (
             <NewsScreen currentUser={usuario} />
+          ) : activeSection === 'configuracoes' && isAdmin ? (
+            <WmsSettingsScreen />
           ) : (
             <SectionPlaceholder
               title={section.title}

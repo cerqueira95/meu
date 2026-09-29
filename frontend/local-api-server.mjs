@@ -22,6 +22,10 @@ const routes = new Map([
   ['/api/news/read', './api/news/read.js'],
   ['/api/news/manage-post', './api/news/manage-post.js'],
   ['/api/news/manage-comment', './api/news/manage-comment.js'],
+  ['/api/wms/settings', './api/wms/settings.js'],
+  ['/api/wms/test', './api/wms/test.js'],
+  ['/api/wms/collect', './api/wms/collect.js'],
+  ['/api/cron/rateio', './api/cron/rateio.js'],
 ])
 function enhanceResponse(res) {
   res.status = (code) => {
