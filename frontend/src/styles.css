@@ -5017,3 +5017,38 @@ form {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Correção responsiva Armazém New */
+@media (max-width: 1100px) {
+  .news-layout.admin-layout,
+  .news-layout.viewer-layout {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+
+  .news-layout.admin-layout .news-feed,
+  .news-layout.viewer-layout .news-feed {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .news-page,
+  .news-layout,
+  .news-feed,
+  .news-create-trigger,
+  .news-post {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .news-post-body h2,
+  .news-post-body p {
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+}
