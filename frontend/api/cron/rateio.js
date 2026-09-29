@@ -1,3 +1,5 @@
+import { sql } from '../_lib/db.js'
+import { currentBahiaDate } from '../_lib/wms-client.js'
 import {
   collectCurrentRateio,
   publicFailureMessage,
@@ -23,10 +25,36 @@ export default async function handler(req, res) {
   }
 
   try {
+    const date = currentBahiaDate()
+    const [rateio, item] = await Promise.all([
+      sql`
+        SELECT status
+        FROM wms_rateio_coletas
+        WHERE data_ref = ${date}
+        LIMIT 1
+      `,
+      sql`
+        SELECT status
+        FROM wms_item_coletas
+        WHERE data_ref = ${date}
+        LIMIT 1
+      `,
+    ])
+
+    if (rateio[0]?.status === 'ok' && item[0]?.status === 'ok') {
+      return res.status(200).json({
+        status: 'ok',
+        skipped: true,
+        date,
+        message: 'Coleta de hoje já concluída.',
+      })
+    }
+
     const result = await collectCurrentRateio()
 
     return res.status(200).json({
       status: 'ok',
+      skipped: false,
       ...result,
     })
   } catch (error) {
