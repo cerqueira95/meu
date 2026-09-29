@@ -63,6 +63,7 @@ export async function saveItemCollection({ date, source, rows }) {
         mapa,
         palete,
         entrega,
+        data_entrega,
         caixa,
         area_separacao,
         codigo_item,
@@ -83,6 +84,11 @@ export async function saveItemCollection({ date, source, rows }) {
         x.mapa,
         x.palete,
         x.entrega,
+        CASE
+          WHEN x.entrega ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}'
+            THEN TO_DATE(SPLIT_PART(x.entrega, ' ', 1), 'DD/MM/YYYY')
+          ELSE ${date}::date
+        END,
         x.caixa,
         x.area_separacao,
         x.codigo_item,
