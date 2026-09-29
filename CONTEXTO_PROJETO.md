@@ -161,3 +161,20 @@ Rotas:
 A navegação `Atividades` é exibida para perfis `Ajudante` e `ADM`.
 
 As tabelas do módulo são criadas de forma idempotente na primeira utilização da API. Evidências são armazenadas no banco como imagem compactada para não depender do filesystem efêmero do Render.
+
+
+### Aprovação ADM e notificações do grupo
+
+A fila administrativa ganhou acesso próprio no menu do ADM: `Aprovar atividades`.
+
+Ao aprovar ou reprovar um lançamento:
+- a decisão continua sendo feita uma única vez por grupo;
+- todos os participantes recebem uma notificação individual;
+- na reprovação, o motivo informado pelo ADM vai dentro da notificação;
+- o motivo também aparece no histórico de 5S de todos os participantes;
+- notificações de atividades entram no sino global do Warehouse.
+
+Tabela nova: `atividade_notificacoes`.
+Rota: `GET/POST /api/activities/notifications`.
+
+A interface de Atividades/5S possui regras responsivas específicas e deve continuar funcional no mobile.
