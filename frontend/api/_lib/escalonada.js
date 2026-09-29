@@ -21,21 +21,21 @@ export async function calculateEscalonadaForDate(date) {
     `,
     sql`
       SELECT
-        usuario_nome,
+        MAX(usuario_nome) AS usuario_nome,
         usuario_login,
         COUNT(*)::int AS quantidade
       FROM wms_item_registros
-      WHERE COALESCE(
-              CASE
-                WHEN entrega ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}'
-                  THEN TO_DATE(SPLIT_PART(entrega, ' ', 1), 'DD/MM/YYYY')
-                ELSE NULL
-              END,
-              data_ref
-            ) = ${date}
+      WHERE CASE
+              WHEN entrega ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+                THEN LEFT(entrega, 10)::date
+              WHEN entrega ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}'
+                THEN TO_DATE(SPLIT_PART(entrega, ' ', 1), 'DD/MM/YYYY')
+              ELSE NULL
+            END = ${date}
         AND LOWER(TRIM(COALESCE(area_separacao, ''))) =
             LOWER(TRIM(${pickPackArea}))
-      GROUP BY usuario_nome, usuario_login
+        AND NULLIF(TRIM(COALESCE(usuario_login, '')), '') IS NOT NULL
+      GROUP BY usuario_login
     `,
     sql`
       SELECT
@@ -67,16 +67,22 @@ export async function calculateEscalonadaForDate(date) {
     }
   }
 
+  const pickPackByLogin = new Map()
   const pickPackByName = new Map()
-  for (const row of pickPackRows) {
-    const nameKey = normalizeName(row.usuario_nome)
-    const current = pickPackByName.get(nameKey)
 
-    if (!current || Number(row.quantidade || 0) > current.quantidade) {
-      pickPackByName.set(nameKey, {
-        quantidade: Number(row.quantidade || 0),
-        login: String(row.usuario_login || '').trim() || null,
-      })
+  for (const row of pickPackRows) {
+    const info = {
+      quantidade: Number(row.quantidade || 0),
+      login: String(row.usuario_login || '').trim() || null,
+    }
+    const loginKey = normalizeLogin(info.login)
+    const nameKey = normalizeName(row.usuario_nome)
+
+    if (loginKey) {
+      pickPackByLogin.set(loginKey, info)
+    }
+    if (nameKey && !pickPackByName.has(nameKey)) {
+      pickPackByName.set(nameKey, info)
     }
   }
 
@@ -89,24 +95,31 @@ export async function calculateEscalonadaForDate(date) {
     const usuarioNome = String(rateio.usuario_nome || '').trim()
     const pontuacao = Number(rateio.pontuacao || 0)
     const valorBase = roundMoney(Number(rateio.valor_base || 0))
-    const pickPackInfo = pickPackByName.get(normalizeName(usuarioNome)) || {
-      quantidade: 0,
-      login: null,
-    }
 
     let user =
       usersByUuid.get(wmsUsuarioId) ||
-      (pickPackInfo.login
-        ? usersByLogin.get(normalizeLogin(pickPackInfo.login))
-        : null) ||
       usersByName.get(normalizeName(usuarioNome)) ||
       null
+
+    let pickPackInfo =
+      (user?.wms_login
+        ? pickPackByLogin.get(normalizeLogin(user.wms_login))
+        : null) ||
+      pickPackByName.get(normalizeName(usuarioNome)) ||
+      {
+        quantidade: 0,
+        login: user?.wms_login || null,
+      }
+
+    if (!user && pickPackInfo.login) {
+      user = usersByLogin.get(normalizeLogin(pickPackInfo.login)) || null
+    }
 
     if (user) {
       linkedUsers += 1
       await linkWmsIdentity(user, {
         wmsUsuarioId,
-        wmsLogin: pickPackInfo.login,
+        wmsLogin: pickPackInfo.login || user.wms_login,
       })
     }
 

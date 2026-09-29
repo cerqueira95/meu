@@ -1,8 +1,7 @@
 const WMS_ORIGIN = 'https://wmst2.ambev.com.br'
 const LOGIN_PATH = '/wms/new/security/authentication/login-novo'
 const RATEIO_PATH = '/api/variable-pay/relatorios/rateio'
-const ITEM_REPORT_ID = 57
-const WAREHOUSE_PATH = '/wms/new/security/v1/users/warehouses'
+const ITEM_REPORT_PATH = '/wms/api-gateway/separacao/tempo-separacao/item-separado'
 
 export function currentBahiaDate() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -97,14 +96,63 @@ export async function fetchWmsRateio(token, date = currentBahiaDate()) {
 }
 
 export async function fetchWmsItemReport(token, date = currentBahiaDate()) {
-  const context = await fetchWmsContext(token)
+  const itemsByPage = 5000
+  const first = await fetchLegacyItemReportPage(token, date, 1, itemsByPage)
+  const totalItems = Number(first.payload?.data?.totalItens || 0)
+  const rows = Array.isArray(first.payload?.data?.itens)
+    ? [...first.payload.data.itens]
+    : []
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsByPage))
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const current = await fetchLegacyItemReportPage(
+      token,
+      date,
+      page,
+      itemsByPage,
+    )
+    if (Array.isArray(current.payload?.data?.itens)) {
+      rows.push(...current.payload.data.itens)
+    }
+  }
+
+  return {
+    source: first.url,
+    rows: rows.map((item) => ({
+      mapa: textOrNull(item.mapa),
+      palete: textOrNull(item.palete),
+      entrega: textOrNull(item.dataEntrega),
+      caixa: null,
+      areaSeparacao: textOrNull(item.areaSeparacao),
+      codigoItem: textOrNull(item.codigoItem),
+      itemDescricao: textOrNull(item.item),
+      quantidade: numberOrNull(item.quantidade),
+      origem: textOrNull(item.origem),
+      equipamento: textOrNull(item.destino),
+      inicioTexto: textOrNull(item.dataHoraInicio),
+      fimTexto: textOrNull(item.dataHoraFim),
+      duracaoSeg: durationToSeconds(item.esforco),
+      usuarioLogin: textOrNull(item.usuario),
+      usuarioNome: null,
+    })),
+  }
+}
+
+async function fetchLegacyItemReportPage(token, date, page, itemsByPage) {
+  const [year, month, day] = String(date).split('-').map(Number)
+  const legacyDate = `${year}-${month}-${day} 0:00:00`
   const params = new URLSearchParams({
-    initialDateTime: date,
-    finalDateTime: date,
-    userId: context.userId,
-    warehouseId: context.warehouseId,
+    usuarioId: '',
+    documento: '',
+    palete: '',
+    item: '',
+    destino: '',
+    itensPorPagina: String(itemsByPage),
+    paginaAtual: String(page),
+    dataInicio: legacyDate,
+    dataFinal: legacyDate,
   })
-  const url = `${WMS_ORIGIN}/api/outbound-reports/report/${ITEM_REPORT_ID}/GetData?${params.toString()}`
+  const url = `${WMS_ORIGIN}${ITEM_REPORT_PATH}?${params.toString()}`
 
   const response = await fetch(url, {
     headers: {
@@ -112,10 +160,9 @@ export async function fetchWmsItemReport(token, date = currentBahiaDate()) {
       Authorization: token,
     },
   })
-
   const payload = await response.json().catch(() => null)
 
-  if (!response.ok) {
+  if (!response.ok || !payload?.data) {
     const error = new Error(
       payload?.message || 'Não foi possível buscar o relatório Tempo de Separação por Item.',
     )
@@ -124,28 +171,14 @@ export async function fetchWmsItemReport(token, date = currentBahiaDate()) {
     throw error
   }
 
-  const rows = Array.isArray(payload?.lines) ? payload.lines : []
+  return { url, payload }
+}
 
-  return {
-    source: url,
-    rows: rows.map((item) => ({
-      mapa: textOrNull(item.load_documentnumber_column),
-      palete: textOrNull(item.pallet_description_column),
-      entrega: textOrNull(item.load_deliverydate_column),
-      caixa: textOrNull(item.containeridentification_join_palletitem_column),
-      areaSeparacao: textOrNull(item.zone_name_column),
-      codigoItem: textOrNull(item.item_code_column_join_pallet),
-      itemDescricao: textOrNull(item.item_description_column_join_pallet),
-      quantidade: numberOrNull(item.palletitem_quantity_unit_column),
-      origem: textOrNull(item.from_location_code_column),
-      equipamento: textOrNull(item.to_location_code_column),
-      inicioTexto: textOrNull(item.palletitem_startedat_column),
-      fimTexto: textOrNull(item.palletitem_finishedat_column),
-      duracaoSeg: numberOrNull(item.palletitem_executiontime_column),
-      usuarioLogin: textOrNull(item.user_login_column),
-      usuarioNome: textOrNull(item.user_name_column),
-    })),
-  }
+function durationToSeconds(value) {
+  const text = String(value || '').trim()
+  const match = text.match(/^(\d+):(\d{2}):(\d{2})$/)
+  if (!match) return null
+  return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
 }
 
 export async function validateWmsCredentials(username, password) {

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api.js'
 
-function todayLocal() {
+function localIsoDate(offsetDays = 0) {
   const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -32,17 +33,16 @@ function statusStyle(status) {
   if (status === 'Ganhou') {
     return { background: '#e9f8ef', color: '#18864b' }
   }
+
   if (status === 'Pick&Pack') {
     return { background: '#fff3d8', color: '#a86b00' }
   }
+
   return { background: '#f2f4f7', color: '#667085' }
 }
 
-export default function EscalonadaAdminScreen() {
-  const today = useMemo(() => todayLocal(), [])
-  const [from, setFrom] = useState(today)
-  const [to, setTo] = useState(today)
-  const [data, setData] = useState({
+function emptyReport() {
+  return {
     resumo: {
       registros: 0,
       ganhou: 0,
@@ -53,24 +53,81 @@ export default function EscalonadaAdminScreen() {
       valor_total: 0,
     },
     resultados: [],
-  })
+  }
+}
+
+export default function EscalonadaAdminScreen() {
+  const today = useMemo(() => localIsoDate(), [])
+  const yesterday = useMemo(() => localIsoDate(-1), [])
+  const [from, setFrom] = useState(today)
+  const [to, setTo] = useState(today)
+  const [data, setData] = useState(emptyReport)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('todos')
 
   useEffect(() => {
-    loadReport()
-  }, [])
+    let active = true
+
+    async function loadInitialReport() {
+      setLoading(true)
+      setError('')
+
+      try {
+        let selectedFrom = today
+        let selectedTo = today
+        let response = await fetchReport(today, today)
+
+        if (!response?.resultados?.length && yesterday !== today) {
+          selectedFrom = yesterday
+          selectedTo = yesterday
+          response = await fetchReport(yesterday, yesterday)
+        }
+
+        if (!active) return
+        setFrom(selectedFrom)
+        setTo(selectedTo)
+        setData(response)
+      } catch (requestError) {
+        if (active) setError(requestError.message)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    loadInitialReport()
+
+    return () => {
+      active = false
+    }
+  }, [today, yesterday])
+
+  async function fetchReport(startDate, endDate) {
+    return api.get(
+      `/api/escalonada/admin?from=${encodeURIComponent(startDate)}&to=${encodeURIComponent(endDate)}`,
+    )
+  }
 
   async function loadReport(event) {
     event?.preventDefault()
+
+    if (!from || !to) {
+      setError('Selecione a data inicial e a data final.')
+      return
+    }
+
+    if (from > to) {
+      setError('A data inicial não pode ser maior que a data final.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
     try {
-      const response = await api.get(
-        `/api/escalonada/admin?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-      )
+      const response = await fetchReport(from, to)
       setData(response)
     } catch (requestError) {
       setError(requestError.message)
@@ -127,10 +184,7 @@ export default function EscalonadaAdminScreen() {
       sheet.getRow(1).font = { bold: true }
       sheet.getRow(1).alignment = { vertical: 'middle' }
       sheet.views = [{ state: 'frozen', ySplit: 1 }]
-      sheet.autoFilter = {
-        from: 'A1',
-        to: 'J1',
-      }
+      sheet.autoFilter = { from: 'A1', to: 'J1' }
 
       for (let index = 2; index <= sheet.rowCount; index += 1) {
         sheet.getCell(`D${index}`).numFmt = '#,##0'
@@ -142,15 +196,15 @@ export default function EscalonadaAdminScreen() {
 
       const summary = workbook.addWorksheet('Resumo')
       summary.columns = [
-        { header: 'Indicador', key: 'indicador', width: 28 },
-        { header: 'Valor', key: 'valor', width: 22 },
+        { header: 'Indicador', key: 'indicador', width: 30 },
+        { header: 'Valor', key: 'valor', width: 24 },
       ]
       summary.addRows([
         { indicador: 'Período', valor: `${dateLabel(from)} a ${dateLabel(to)}` },
         { indicador: 'Registros', valor: data.resumo.registros },
-        { indicador: 'Ganharam escalonada', valor: data.resumo.ganhou },
+        { indicador: 'Com escalonada', valor: data.resumo.ganhou },
         { indicador: 'Pick&Pack', valor: data.resumo.pickpack },
-        { indicador: 'Não ganharam', valor: data.resumo.sem_incentivo },
+        { indicador: 'Sem escalonada', valor: data.resumo.sem_incentivo },
         { indicador: 'Valor base acumulado', valor: data.resumo.valor_base },
         { indicador: 'Incentivo acumulado', valor: data.resumo.incentivo },
         { indicador: 'Total acumulado', valor: data.resumo.valor_total },
@@ -180,114 +234,230 @@ export default function EscalonadaAdminScreen() {
     }
   }
 
+  const filteredRows = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase('pt-BR')
+
+    return (data.resultados || []).filter((row) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        String(row.usuario_nome || '').toLocaleLowerCase('pt-BR').includes(normalizedQuery) ||
+        String(row.wms_login || '').toLocaleLowerCase('pt-BR').includes(normalizedQuery)
+
+      const matchesStatus =
+        statusFilter === 'todos' ||
+        (statusFilter === 'ganhou' && row.status === 'Ganhou') ||
+        (statusFilter === 'pickpack' && row.status === 'Pick&Pack') ||
+        (statusFilter === 'sem' && row.status !== 'Ganhou' && row.status !== 'Pick&Pack')
+
+      return matchesQuery && matchesStatus
+    })
+  }, [data.resultados, query, statusFilter])
+
+  const periodText =
+    from === to
+      ? dateLabel(from)
+      : `${dateLabel(from)} — ${dateLabel(to)}`
+
   return (
     <section style={styles.page}>
-      <div style={styles.header}>
+      <div style={styles.hero}>
         <div>
-          <span style={styles.kicker}>RELATÓRIO ADM</span>
-          <h1 style={styles.title}>Escalonada diária</h1>
+          <span style={styles.kicker}>GESTÃO • RELATÓRIOS</span>
+          <h1 style={styles.title}>Escalonada</h1>
           <p style={styles.subtitle}>
-            Veja quem ganhou, quem não ganhou e quem ficou em Pick&Pack por dia.
+            Visão administrativa do resultado diário, faixas de incentivo e valores acumulados.
           </p>
+        </div>
+
+        <div style={styles.reportType}>
+          <span style={styles.reportTypeLabel}>RELATÓRIO ATIVO</span>
+          <strong style={styles.reportTypeValue}>Escalonada diária</strong>
         </div>
       </div>
 
-      <form style={styles.filters} onSubmit={loadReport}>
-        <label style={styles.field}>
-          <span>Data inicial</span>
-          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-        </label>
-        <label style={styles.field}>
-          <span>Data final</span>
-          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-        </label>
-        <button style={styles.primaryButton} type="submit" disabled={loading}>
-          {loading ? 'Carregando...' : 'Aplicar período'}
-        </button>
-        <button
-          style={styles.secondaryButton}
-          type="button"
-          onClick={exportXlsx}
-          disabled={loading || exporting || !data.resultados?.length}
-        >
-          {exporting ? 'Gerando XLSX...' : 'Baixar XLSX'}
-        </button>
+      <form style={styles.filterPanel} onSubmit={loadReport}>
+        <div style={styles.filterHeading}>
+          <div>
+            <span style={styles.miniLabel}>PERÍODO DO RELATÓRIO</span>
+            <strong style={styles.periodValue}>{periodText}</strong>
+          </div>
+          <span style={styles.recordPill}>
+            {number(data.resumo?.registros)} {Number(data.resumo?.registros) === 1 ? 'registro' : 'registros'}
+          </span>
+        </div>
+
+        <div style={styles.filterControls}>
+          <label style={styles.field}>
+            <span>Data inicial</span>
+            <input
+              style={styles.input}
+              type="date"
+              value={from}
+              max={today}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </label>
+
+          <label style={styles.field}>
+            <span>Data final</span>
+            <input
+              style={styles.input}
+              type="date"
+              value={to}
+              max={today}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </label>
+
+          <button style={styles.primaryButton} type="submit" disabled={loading}>
+            {loading ? 'Carregando...' : 'Aplicar período'}
+          </button>
+
+          <button
+            style={styles.secondaryButton}
+            type="button"
+            onClick={exportXlsx}
+            disabled={loading || exporting || !data.resultados?.length}
+          >
+            {exporting ? 'Gerando XLSX...' : 'Exportar XLSX'}
+          </button>
+        </div>
       </form>
 
       {error && <div style={styles.error}>{error}</div>}
 
       <div style={styles.cards}>
         <article style={styles.card}>
-          <span style={styles.cardLabel}>GANHARAM</span>
+          <span style={styles.cardLabel}>REGISTROS</span>
+          <strong style={styles.cardValue}>{number(data.resumo?.registros)}</strong>
+          <small style={styles.cardSmall}>resultados no período</small>
+        </article>
+
+        <article style={styles.card}>
+          <span style={styles.cardLabel}>COM ESCALONADA</span>
           <strong style={styles.cardValue}>{number(data.resumo?.ganhou)}</strong>
           <small style={styles.cardSmall}>{currency(data.resumo?.incentivo)} em incentivos</small>
         </article>
+
         <article style={styles.card}>
           <span style={styles.cardLabel}>PICK&PACK</span>
           <strong style={styles.cardValue}>{number(data.resumo?.pickpack)}</strong>
-          <small style={styles.cardSmall}>sem escalonada pela regra</small>
+          <small style={styles.cardSmall}>30 ou mais itens Marketplace</small>
         </article>
+
         <article style={styles.card}>
-          <span style={styles.cardLabel}>NÃO GANHARAM</span>
+          <span style={styles.cardLabel}>SEM ESCALONADA</span>
           <strong style={styles.cardValue}>{number(data.resumo?.sem_incentivo)}</strong>
           <small style={styles.cardSmall}>fora das faixas de incentivo</small>
         </article>
-        <article style={styles.card}>
+
+        <article style={{ ...styles.card, ...styles.totalCard }}>
           <span style={styles.cardLabel}>TOTAL DO PERÍODO</span>
           <strong style={styles.cardValue}>{currency(data.resumo?.valor_total)}</strong>
-          <small style={styles.cardSmall}>{number(data.resumo?.registros)} registros</small>
+          <small style={styles.cardSmall}>
+            base {currency(data.resumo?.valor_base)} + incentivo
+          </small>
         </article>
       </div>
 
       <div style={styles.panel}>
+        <div style={styles.panelHeader}>
+          <div>
+            <span style={styles.miniLabel}>DETALHAMENTO</span>
+            <h2 style={styles.panelTitle}>Resultado por colaborador</h2>
+          </div>
+
+          <div style={styles.tableFilters}>
+            <input
+              style={styles.searchInput}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar nome ou login WMS"
+            />
+            <select
+              style={styles.select}
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="todos">Todos</option>
+              <option value="ganhou">Com escalonada</option>
+              <option value="pickpack">Pick&Pack</option>
+              <option value="sem">Sem escalonada</option>
+            </select>
+          </div>
+        </div>
+
         {loading ? (
           <div style={styles.empty}>Carregando relatório...</div>
-        ) : data.resultados?.length === 0 ? (
-          <div style={styles.empty}>Nenhum resultado encontrado no período selecionado.</div>
-        ) : (
-          <div style={styles.tableWrap}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Dia</th>
-                  <th style={styles.th}>Usuário</th>
-                  <th style={styles.th}>Pontuação</th>
-                  <th style={styles.th}>Valor base</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Faixa</th>
-                  <th style={styles.th}>Incentivo</th>
-                  <th style={styles.th}>Total do dia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.resultados.map((row) => (
-                  <tr key={row.id}>
-                    <td style={styles.td}>{dateLabel(row.data_ref)}</td>
-                    <td style={styles.td}>
-                      <strong>{row.usuario_nome}</strong>
-                      <small style={styles.login}>{row.wms_login || 'Sem login WMS'}</small>
-                    </td>
-                    <td style={styles.td}>{number(row.pontuacao)}</td>
-                    <td style={styles.td}>{currency(row.valor_base)}</td>
-                    <td style={styles.td}>
-                      <span style={{ ...styles.badge, ...statusStyle(row.status) }}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      {row.pickpack ? '-' : row.percentual > 0 ? `${row.percentual}%` : '-'}
-                    </td>
-                    <td style={styles.td}>
-                      <strong style={row.incentivo > 0 ? styles.gain : styles.muted}>
-                        {row.incentivo > 0 ? '+ ' + currency(row.incentivo) : currency(0)}
-                      </strong>
-                    </td>
-                    <td style={styles.td}><strong>{currency(row.valor_total)}</strong></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        ) : !data.resultados?.length ? (
+          <div style={styles.empty}>
+            Nenhum resultado encontrado no período selecionado.
           </div>
+        ) : !filteredRows.length ? (
+          <div style={styles.empty}>
+            Nenhum colaborador corresponde aos filtros aplicados.
+          </div>
+        ) : (
+          <>
+            <div style={styles.tableInfo}>
+              Exibindo {number(filteredRows.length)} de {number(data.resultados.length)} registros
+            </div>
+            <div style={styles.tableWrap}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Dia</th>
+                    <th style={styles.th}>Colaborador</th>
+                    <th style={styles.th}>Pontuação</th>
+                    <th style={styles.th}>Valor base</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Faixa</th>
+                    <th style={styles.th}>Incentivo</th>
+                    <th style={styles.th}>Total do dia</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row) => (
+                    <tr key={row.id}>
+                      <td style={styles.td}>
+                        <strong>{dateLabel(row.data_ref)}</strong>
+                      </td>
+                      <td style={styles.td}>
+                        <strong style={styles.userName}>{row.usuario_nome}</strong>
+                        <small style={styles.login}>
+                          {row.wms_login || 'Sem login WMS'}
+                        </small>
+                      </td>
+                      <td style={styles.td}>{number(row.pontuacao)}</td>
+                      <td style={styles.td}>{currency(row.valor_base)}</td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.badge, ...statusStyle(row.status) }}>
+                          {row.status}
+                        </span>
+                        {row.pickpack ? (
+                          <small style={styles.pickPackCount}>
+                            {number(row.pickpack_qtd)} itens Marketplace
+                          </small>
+                        ) : null}
+                      </td>
+                      <td style={styles.td}>
+                        {row.pickpack ? '—' : row.percentual > 0 ? `${row.percentual}%` : '—'}
+                      </td>
+                      <td style={styles.td}>
+                        <strong style={row.incentivo > 0 ? styles.gain : styles.muted}>
+                          {row.incentivo > 0 ? `+ ${currency(row.incentivo)}` : currency(0)}
+                        </strong>
+                      </td>
+                      <td style={styles.td}>
+                        <strong>{currency(row.valor_total)}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </section>
@@ -295,29 +465,298 @@ export default function EscalonadaAdminScreen() {
 }
 
 const styles = {
-  page: { display: 'grid', gap: 22 },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20 },
-  kicker: { display: 'block', fontSize: 11, letterSpacing: '0.18em', fontWeight: 800, color: '#f2a900', marginBottom: 8 },
-  title: { margin: 0, fontSize: 'clamp(30px, 4vw, 48px)', color: '#18263a' },
-  subtitle: { margin: '8px 0 0', color: '#718096', fontSize: 15 },
-  filters: { display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap', background: '#fff', border: '1px solid #e1e7ef', borderRadius: 18, padding: 18 },
-  field: { display: 'grid', gap: 7, color: '#667085', fontSize: 12, fontWeight: 700 },
-  primaryButton: { border: 0, borderRadius: 12, background: '#ffb000', color: '#111827', fontWeight: 800, padding: '12px 18px', cursor: 'pointer' },
-  secondaryButton: { border: '1px solid #d5dde8', borderRadius: 12, background: '#fff', color: '#26364c', fontWeight: 800, padding: '12px 18px', cursor: 'pointer' },
-  cards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 },
-  card: { background: '#fff', border: '1px solid #e1e7ef', borderRadius: 18, padding: 20 },
-  cardLabel: { fontSize: 11, letterSpacing: '0.12em', fontWeight: 800, color: '#97a3b6' },
-  cardValue: { display: 'block', marginTop: 10, fontSize: 27, color: '#18263a' },
-  cardSmall: { display: 'block', marginTop: 6, color: '#8995a8' },
-  panel: { background: '#fff', border: '1px solid #e1e7ef', borderRadius: 20, overflow: 'hidden' },
-  tableWrap: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', minWidth: 1050 },
-  th: { textAlign: 'left', padding: '13px 16px', fontSize: 11, letterSpacing: '0.07em', color: '#8b97a9', background: '#f8fafc', borderBottom: '1px solid #edf1f5' },
-  td: { padding: '15px 16px', borderBottom: '1px solid #edf1f5', color: '#28364a', fontSize: 14 },
-  badge: { display: 'inline-flex', borderRadius: 999, padding: '6px 10px', fontWeight: 800, fontSize: 12 },
-  gain: { color: '#18864b' },
-  muted: { color: '#8b97a9' },
-  login: { display: 'block', color: '#98a2b3', marginTop: 4 },
-  empty: { padding: 34, textAlign: 'center', color: '#7f8b9d' },
-  error: { padding: '13px 15px', borderRadius: 12, background: '#fff0f0', color: '#b42318', border: '1px solid #ffd3d3' },
+  page: {
+    width: '100%',
+    maxWidth: 1420,
+    margin: '0 auto',
+    display: 'grid',
+    gap: 20,
+  },
+  hero: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 24,
+    flexWrap: 'wrap',
+  },
+  kicker: {
+    display: 'block',
+    fontSize: 10,
+    letterSpacing: '0.2em',
+    fontWeight: 900,
+    color: '#f2a900',
+    marginBottom: 8,
+  },
+  title: {
+    margin: 0,
+    fontSize: 'clamp(30px, 3.6vw, 46px)',
+    lineHeight: 1.04,
+    color: '#0f2747',
+  },
+  subtitle: {
+    margin: '9px 0 0',
+    color: '#718096',
+    fontSize: 14,
+    maxWidth: 720,
+  },
+  reportType: {
+    minWidth: 210,
+    padding: '13px 16px',
+    borderRadius: 14,
+    border: '1px solid #dfe6ee',
+    background: 'rgba(255,255,255,0.72)',
+  },
+  reportTypeLabel: {
+    display: 'block',
+    fontSize: 9,
+    letterSpacing: '0.14em',
+    fontWeight: 900,
+    color: '#98a2b3',
+    marginBottom: 5,
+  },
+  reportTypeValue: {
+    color: '#23364f',
+    fontSize: 14,
+  },
+  filterPanel: {
+    display: 'grid',
+    gap: 15,
+    background: '#fff',
+    border: '1px solid #dfe6ee',
+    borderRadius: 18,
+    padding: '16px 18px',
+    boxShadow: '0 8px 26px rgba(25, 49, 79, 0.045)',
+  },
+  filterHeading: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 14,
+    flexWrap: 'wrap',
+  },
+  miniLabel: {
+    display: 'block',
+    fontSize: 9,
+    letterSpacing: '0.16em',
+    fontWeight: 900,
+    color: '#f2a900',
+    marginBottom: 5,
+  },
+  periodValue: {
+    display: 'block',
+    color: '#253750',
+    fontSize: 15,
+  },
+  recordPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: 999,
+    padding: '7px 11px',
+    background: '#f3f6f9',
+    color: '#667085',
+    fontWeight: 800,
+    fontSize: 11,
+  },
+  filterControls: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'end',
+    flexWrap: 'wrap',
+  },
+  field: {
+    display: 'grid',
+    gap: 6,
+    color: '#667085',
+    fontSize: 11,
+    fontWeight: 800,
+  },
+  input: {
+    height: 40,
+    minWidth: 160,
+    border: '1px solid #d7e0ea',
+    borderRadius: 10,
+    padding: '0 11px',
+    color: '#26364c',
+    background: '#fff',
+    font: 'inherit',
+  },
+  primaryButton: {
+    height: 40,
+    border: 0,
+    borderRadius: 10,
+    background: '#ffb000',
+    color: '#111827',
+    fontWeight: 900,
+    padding: '0 17px',
+    cursor: 'pointer',
+  },
+  secondaryButton: {
+    height: 40,
+    border: '1px solid #d5dde8',
+    borderRadius: 10,
+    background: '#fff',
+    color: '#26364c',
+    fontWeight: 900,
+    padding: '0 17px',
+    cursor: 'pointer',
+  },
+  cards: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: 12,
+  },
+  card: {
+    minHeight: 112,
+    background: '#fff',
+    border: '1px solid #dfe6ee',
+    borderRadius: 17,
+    padding: '17px 18px',
+    boxShadow: '0 8px 24px rgba(25, 49, 79, 0.045)',
+  },
+  totalCard: {
+    background: 'linear-gradient(145deg, #fff 0%, #fbfcfe 100%)',
+  },
+  cardLabel: {
+    fontSize: 9,
+    letterSpacing: '0.13em',
+    fontWeight: 900,
+    color: '#93a0b3',
+  },
+  cardValue: {
+    display: 'block',
+    marginTop: 9,
+    fontSize: 25,
+    lineHeight: 1.05,
+    color: '#102a4d',
+  },
+  cardSmall: {
+    display: 'block',
+    marginTop: 7,
+    color: '#8b97a8',
+    fontSize: 11,
+  },
+  panel: {
+    background: '#fff',
+    border: '1px solid #dfe6ee',
+    borderRadius: 19,
+    overflow: 'hidden',
+    boxShadow: '0 10px 28px rgba(25, 49, 79, 0.05)',
+  },
+  panelHeader: {
+    padding: '17px 19px',
+    borderBottom: '1px solid #edf1f5',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    flexWrap: 'wrap',
+  },
+  panelTitle: {
+    margin: 0,
+    color: '#172b46',
+    fontSize: 19,
+  },
+  tableFilters: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  searchInput: {
+    width: 245,
+    maxWidth: '70vw',
+    height: 38,
+    border: '1px solid #d7e0ea',
+    borderRadius: 10,
+    padding: '0 11px',
+    color: '#26364c',
+    background: '#fff',
+    font: 'inherit',
+  },
+  select: {
+    height: 38,
+    border: '1px solid #d7e0ea',
+    borderRadius: 10,
+    padding: '0 10px',
+    color: '#26364c',
+    background: '#fff',
+    font: 'inherit',
+    fontWeight: 700,
+  },
+  tableInfo: {
+    padding: '9px 19px',
+    background: '#fbfcfd',
+    color: '#8b97a8',
+    fontSize: 11,
+    borderBottom: '1px solid #edf1f5',
+  },
+  tableWrap: {
+    overflowX: 'auto',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    minWidth: 1080,
+  },
+  th: {
+    textAlign: 'left',
+    padding: '12px 15px',
+    fontSize: 9,
+    letterSpacing: '0.08em',
+    color: '#8b97a9',
+    background: '#f7f9fb',
+    borderBottom: '1px solid #edf1f5',
+    whiteSpace: 'nowrap',
+  },
+  td: {
+    padding: '13px 15px',
+    borderBottom: '1px solid #edf1f5',
+    color: '#28364a',
+    fontSize: 12,
+    verticalAlign: 'middle',
+  },
+  userName: {
+    color: '#20334e',
+    fontSize: 12,
+  },
+  badge: {
+    display: 'inline-flex',
+    borderRadius: 999,
+    padding: '5px 9px',
+    fontWeight: 900,
+    fontSize: 10,
+    whiteSpace: 'nowrap',
+  },
+  pickPackCount: {
+    display: 'block',
+    marginTop: 5,
+    color: '#9a7429',
+    fontSize: 9,
+  },
+  gain: {
+    color: '#18864b',
+  },
+  muted: {
+    color: '#8b97a9',
+  },
+  login: {
+    display: 'block',
+    color: '#98a2b3',
+    marginTop: 3,
+    fontSize: 10,
+  },
+  empty: {
+    padding: 42,
+    textAlign: 'center',
+    color: '#7f8b9d',
+    fontSize: 13,
+  },
+  error: {
+    padding: '12px 14px',
+    borderRadius: 12,
+    background: '#fff0f0',
+    color: '#b42318',
+    border: '1px solid #ffd3d3',
+    fontSize: 12,
+    fontWeight: 700,
+  },
 }

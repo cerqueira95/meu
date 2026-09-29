@@ -524,7 +524,9 @@ function DashboardHome({ usuario, onNavigate }) {
             ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
               ? [['usuarios', 'Usuários', 'Perfis, acessos e permissões']]
               : []),
-            ['relatorios', 'Relatórios', 'Indicadores e exportações'],
+            ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
+              ? [['relatorios', 'Relatórios', 'Indicadores e exportações']]
+              : []),
             ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
               ? [['configuracoes', 'Configurações', 'Preferências e parâmetros do sistema']]
               : []),
@@ -1014,7 +1016,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
-    { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
+    ...(isAdmin ? [{ id: 'relatorios', label: 'Relatórios', icon: 'relatorios' }] : []),
   ]
 
   useEffect(() => {

@@ -130,7 +130,6 @@ export default function EscalonadaScreen() {
                   <th style={styles.th}>Dia</th>
                   <th style={styles.th}>Pontuação</th>
                   <th style={styles.th}>Valor base</th>
-                  <th style={styles.th}>Situação</th>
                   <th style={styles.th}>Ganhou</th>
                   <th style={styles.th}>Total do dia</th>
                 </tr>
@@ -143,20 +142,6 @@ export default function EscalonadaScreen() {
                     </td>
                     <td style={styles.td}>{number(row.pontuacao)}</td>
                     <td style={styles.td}>{currency(row.valor_base)}</td>
-                    <td style={styles.td}>
-                      {row.pickpack ? (
-                        <span style={styles.pickPackGroup}>
-                          <span style={styles.pickPackBadge}>Pick&Pack</span>
-                          <small style={styles.pickPackCount}>
-                            {number(row.pickpack_qtd)} itens em Marketplace
-                          </small>
-                        </span>
-                      ) : row.percentual > 0 ? (
-                        <span style={styles.percentBadge}>{row.percentual}%</span>
-                      ) : (
-                        <span style={styles.neutralBadge}>Não ganhou</span>
-                      )}
-                    </td>
                     <td style={styles.td}>
                       <strong style={row.incentivo > 0 ? styles.gain : styles.muted}>
                         {row.incentivo > 0 ? '+ ' + currency(row.incentivo) : currency(0)}

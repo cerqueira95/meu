@@ -25,6 +25,9 @@ const routes = new Map([
   ['/api/wms/settings', './api/wms/settings.js'],
   ['/api/wms/test', './api/wms/test.js'],
   ['/api/wms/collect', './api/wms/collect.js'],
+  ['/api/escalonada', './api/escalonada/index.js'],
+  ['/api/escalonada/read', './api/escalonada/read.js'],
+  ['/api/escalonada/admin', './api/escalonada/admin.js'],
   ['/api/cron/rateio', './api/cron/rateio.js'],
 ])
 function enhanceResponse(res) {
