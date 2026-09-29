@@ -1,9 +1,9 @@
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
 import {
-  FIVE_S_UNIT_VALUE,
   currentBahiaDate,
   ensureActivitiesSchema,
+  getActivityConfig,
   loadActivityBatch,
   optionMap5s,
   validImageData,
@@ -197,6 +197,11 @@ export default async function handler(req, res) {
           })
         }
 
+        const config = await getActivityConfig('5s')
+        if (!config?.ativo) {
+          return res.status(404).json({ status: 'error', message: 'Atividade 5S indisponível.' })
+        }
+
         const payload = normalizeEditPayload(req.body)
         const validation = validateEditPayload(payload)
         if (validation) {
@@ -303,7 +308,7 @@ export default async function handler(req, res) {
         await sql`
           UPDATE atividade_lancamentos
           SET observacao = ${payload.observacao || null},
-              valor_unitario = ${FIVE_S_UNIT_VALUE},
+              valor_unitario = ${config.valor_unitario},
               atualizado_em = NOW()
           WHERE id = ${id}
         `
@@ -350,7 +355,7 @@ export default async function handler(req, res) {
               ${id},
               ${item.opcao_chave},
               ${item.opcao_nome},
-              ${FIVE_S_UNIT_VALUE},
+              ${config.valor_unitario},
               ${item.evidencia_foto}
             )
           `
