@@ -38,6 +38,7 @@ const routes = new Map([
   ['/api/escalonada/admin', './api/escalonada/admin.js'],
   ['/api/cron/rateio', './api/cron/rateio.js'],
   ['/api/activities/5s', './api/activities/5s.js'],
+  ['/api/activities/amarracao', './api/activities/amarracao.js'],
   ['/api/activities/admin', './api/activities/admin.js'],
   ['/api/activities/notifications', './api/activities/notifications.js'],
   ['/api/activities/settings', './api/activities/settings.js'],
