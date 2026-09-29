@@ -111,3 +111,53 @@ Peça ao assistente para:
 ## Última atualização deste contexto
 
 2026-09-29 — documentação criada para facilitar continuidade entre chats e comentários adicionados ao endpoint do cron.
+
+
+## Módulo Atividades — início da migração
+
+Em 2026-09-29 começou a migração das atividades antigas em PHP para o Warehouse atual.
+
+### Primeiro módulo: 5S
+
+O comportamento original do arquivo PHP foi preservado como referência:
+- quem lança conta automaticamente como participante principal;
+- podem ser selecionados ajudantes;
+- é possível selecionar várias áreas no mesmo lançamento;
+- cada área exige foto;
+- Picking possui subáreas/ruas;
+- existe bloqueio de duplicidade por pessoa + área + dia;
+- lançamento reprovado não bloqueia novo lançamento da mesma área;
+- valor inicial do 5S permanece em R$ 1,00 por área / pessoa.
+
+### Mudança estrutural importante
+
+No sistema antigo, um mesmo lançamento criava um registro separado para cada participante, fazendo o ADM enxergar várias atividades para aprovar.
+
+No Warehouse novo, o lançamento passa a ser um GRUPO único:
+- uma linha principal em `atividade_lancamentos`;
+- participantes em `atividade_lancamento_participantes`;
+- áreas/evidências em `atividade_lancamento_itens`.
+
+Assim o ADM aprova ou reprova uma vez e a decisão vale para todos os participantes do grupo.
+
+A fila administrativa permite:
+- aprovar o grupo;
+- reprovar o grupo com motivo;
+- editar um lançamento pendente antes da aprovação;
+- visualizar participantes, áreas, fotos, valor individual e valor total do grupo.
+
+### Arquivos novos
+
+- `frontend/api/_lib/activities.js`
+- `frontend/api/activities/5s.js`
+- `frontend/api/activities/admin.js`
+- `frontend/src/components/ActivitiesScreen.jsx`
+- `frontend/src/components/ActivitiesScreen.css`
+
+Rotas:
+- `GET/POST /api/activities/5s`
+- `GET/POST /api/activities/admin`
+
+A navegação `Atividades` é exibida para perfis `Ajudante` e `ADM`.
+
+As tabelas do módulo são criadas de forma idempotente na primeira utilização da API. Evidências são armazenadas no banco como imagem compactada para não depender do filesystem efêmero do Render.
