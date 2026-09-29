@@ -1211,3 +1211,142 @@ button.activity-module-card:hover {
   font-size: 11px;
   line-height: 1.45;
 }
+
+
+.activity-values-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.activity-value-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #e4e7ec;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, .035);
+}
+
+.activity-value-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-value-card h2 {
+  margin: 7px 0 0;
+  font-size: 18px;
+}
+
+.activity-value-tag {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #067647;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.activity-value-current {
+  color: #1849a9;
+  font-size: 19px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.activity-value-edit {
+  display: grid;
+  gap: 7px;
+}
+
+.activity-value-edit label {
+  color: #344054;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.activity-value-input-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.activity-value-input-wrap:focus-within {
+  border-color: #84adff;
+  box-shadow: 0 0 0 3px rgba(21, 94, 239, .09);
+}
+
+.activity-value-input-wrap span {
+  padding: 0 0 0 12px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.activity-value-input-wrap input {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  outline: 0;
+  padding: 0 12px 0 8px;
+  font: inherit;
+  font-weight: 800;
+  color: #101828;
+}
+
+.activity-value-save {
+  min-height: 42px;
+  border: 0;
+  border-radius: 11px;
+  background: #155eef;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.activity-value-save:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.activity-values-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 13px 15px;
+  border: 1px solid #dbe7f7;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #475467;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.activity-values-note strong {
+  color: #1849a9;
+}
+
+@media (max-width: 1000px) {
+  .activity-values-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .activity-values-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-values-note {
+    display: grid;
+  }
+}
