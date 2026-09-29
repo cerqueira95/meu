@@ -37,6 +37,8 @@ const routes = new Map([
   ['/api/escalonada/read', './api/escalonada/read.js'],
   ['/api/escalonada/admin', './api/escalonada/admin.js'],
   ['/api/cron/rateio', './api/cron/rateio.js'],
+  ['/api/activities/5s', './api/activities/5s.js'],
+  ['/api/activities/admin', './api/activities/admin.js'],
 ])
 
 const MIME_TYPES = {
