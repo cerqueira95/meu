@@ -7,6 +7,7 @@ import ProfilePhotoModal, { compressProfilePhoto } from './components/ProfilePho
 import WmsSettingsScreen from './components/WmsSettingsScreen.jsx'
 import EscalonadaScreen from './components/EscalonadaScreen.jsx'
 import EscalonadaAdminScreen from './components/EscalonadaAdminScreen.jsx'
+import ActivitiesScreen from './components/ActivitiesScreen.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -407,6 +408,13 @@ function AppIcon({ name }) {
         <path d="M12 8v5l3 2" />
       </>
     ),
+    atividades: (
+      <>
+        <path d="M5 4h14v16H5z" />
+        <path d="M8 8h8M8 12h5M8 16h7" />
+        <path d="m15 12 1.5 1.5L20 10" />
+      </>
+    ),
     usuarios: (
       <>
         <circle cx="9" cy="8" r="3" />
@@ -460,6 +468,8 @@ function AppIcon({ name }) {
 
 function DashboardHome({ usuario, onNavigate }) {
   const firstName = String(usuario.nome || 'Usuário').trim().split(' ')[0]
+  const profile = String(usuario.perfil || '').toUpperCase()
+  const canUseActivities = profile === 'AJUDANTE' || profile === 'ADM'
 
   return (
     <>
@@ -521,6 +531,9 @@ function DashboardHome({ usuario, onNavigate }) {
             ['news', 'Armazém New', 'Notícias, comunicados e reconhecimentos'],
             ['rotas', 'Rotas', 'Acompanhamento das operações de entrega'],
             ['devolucoes', 'Devoluções', 'Controle e análise de devoluções'],
+            ...(canUseActivities
+              ? [['atividades', 'Atividades', '5S e lançamentos operacionais do armazém']]
+              : []),
             ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
               ? [['usuarios', 'Usuários', 'Perfis, acessos e permissões']]
               : []),
@@ -1008,12 +1021,14 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   const notificationRef = useRef(null)
 
   const isAdmin = String(usuario.perfil || '').toUpperCase() === 'ADM'
+  const canUseActivities = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase())
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
     { id: 'armazem', label: 'Armazém', icon: 'armazem' },
     { id: 'news', label: 'Armazém New', icon: 'news' },
     { id: 'rotas', label: 'Rotas', icon: 'rotas' },
     { id: 'devolucoes', label: 'Devoluções', icon: 'devolucoes' },
+    ...(canUseActivities ? [{ id: 'atividades', label: 'Atividades', icon: 'atividades' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     ...(isAdmin ? [{ id: 'relatorios', label: 'Relatórios', icon: 'relatorios' }] : []),
@@ -1078,6 +1093,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     news: { title: 'Armazém New', description: 'Notícias, comunicados e reconhecimentos do armazém.', icon: 'news' },
     rotas: { title: 'Rotas', description: 'Acompanhamento das rotas e entregas.', icon: 'rotas' },
     devolucoes: { title: 'Devoluções', description: 'Gestão e análise das devoluções da operação.', icon: 'devolucoes' },
+    atividades: { title: 'Atividades', description: 'Lançamentos operacionais do armazém.', icon: 'atividades' },
     escalonada: { title: 'Minha Escalonada', description: 'Seu resultado diário e incentivo acumulado.', icon: 'escalonada' },
     usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
     relatorios: { title: 'Relatórios', description: 'Indicadores consolidados e exportações.', icon: 'relatorios' },
@@ -1375,6 +1391,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <UsersScreen currentUser={usuario} />
           ) : activeSection === 'news' ? (
             <NewsScreen currentUser={usuario} />
+          ) : activeSection === 'atividades' && canUseActivities ? (
+            <ActivitiesScreen currentUser={usuario} />
           ) : activeSection === 'escalonada' ? (
             <EscalonadaScreen />
           ) : activeSection === 'relatorios' && isAdmin ? (
