@@ -40,6 +40,7 @@ const routes = new Map([
   ['/api/activities/5s', './api/activities/5s.js'],
   ['/api/activities/admin', './api/activities/admin.js'],
   ['/api/activities/notifications', './api/activities/notifications.js'],
+  ['/api/activities/settings', './api/activities/settings.js'],
 ])
 
 const MIME_TYPES = {
