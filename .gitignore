@@ -22,3 +22,5 @@ Thumbs.db
 npm-debug.log*
 .vercel
 .env*
+automation/rateio-output/
+automation/logs/
