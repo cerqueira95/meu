@@ -486,6 +486,35 @@ function DashboardHome({ usuario, onNavigate }) {
   const profile = String(usuario.perfil || '').toUpperCase()
   const canUseActivities = profile === 'AJUDANTE' || profile === 'ADM'
   const canUseWallet = profile === 'AJUDANTE' || profile === 'ADM'
+  const [dashboardHighlights, setDashboardHighlights] = useState([])
+
+  useEffect(() => {
+    let active = true
+
+    api.get('/api/highlights')
+      .then((data) => {
+        if (!active) return
+        const priority = { Operador: 1, Ajudante: 2, Conferente: 3, Manobrista: 4 }
+        const rows = [...(data.destaques_painel || [])]
+          .sort((a, b) => (priority[a.funcao] || 9) - (priority[b.funcao] || 9))
+        setDashboardHighlights(rows)
+      })
+      .catch(() => {
+        if (active) setDashboardHighlights([])
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  function dashboardPeriodLabel(item) {
+    const type = String(item.periodo_tipo || '').toLowerCase()
+    if (type === 'dia') return 'Destaque do dia'
+    if (type === 'semana') return 'Destaque da semana'
+    if (type === 'mes') return 'Destaque do mês'
+    return 'Destaque da operação'
+  }
 
   return (
     <>
@@ -529,6 +558,42 @@ function DashboardHome({ usuario, onNavigate }) {
           </article>
         </div>
       </section>
+
+      {dashboardHighlights.length > 0 && (
+        <section className="dashboard-highlights">
+          <div className="dashboard-highlights-head">
+            <div>
+              <span className="dashboard-kicker">DESTAQUES DA OPERAÇÃO</span>
+              <h2>Quem fez a diferença</h2>
+              <p>Reconhecimentos escolhidos pela liderança e visíveis para toda a operação.</p>
+            </div>
+            <button type="button" onClick={() => onNavigate?.('destaques')}>
+              Ver todos
+            </button>
+          </div>
+
+          <div className={`dashboard-highlights-grid count-${Math.min(dashboardHighlights.length, 4)}`}>
+            {dashboardHighlights.map((item) => (
+              <article className="dashboard-highlight-card" key={item.id}>
+                <div className="dashboard-highlight-star">★</div>
+                <UserAvatar
+                  name={item.nome}
+                  photo={item.foto_perfil}
+                  className="dashboard-highlight-avatar"
+                />
+                <span className="dashboard-highlight-role">{item.funcao}</span>
+                <h3>{item.nome}</h3>
+                <small>{dashboardPeriodLabel(item)}</small>
+                <p>{item.motivo}</p>
+                <div className="dashboard-highlight-footer">
+                  <strong>★ {item.estrelas}</strong>
+                  <span>{item.estrelas === 1 ? 'estrela' : 'estrelas'}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <HomeNewsPreview onNavigate={onNavigate} />
 
