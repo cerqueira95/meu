@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
+import { logAdminAction } from '../_lib/remuneration-admin.js'
 
 const PROFILES = ['ADM', 'Operador', 'Ajudante', 'Conferente']
 const STATUSES = ['ativo', 'inativo']
@@ -24,6 +25,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ status: 'error', message: 'Usuário inválido.' })
     }
 
+    const beforeRows = await sql`SELECT id, nome, cpf, matricula, email, cargo, turno, perfil, status FROM usuarios WHERE id = ${id} LIMIT 1`
     const payload = normalizePayload(req.body)
     const validation = validatePayload(payload)
 
@@ -102,6 +104,15 @@ export default async function handler(req, res) {
       await sql`DELETE FROM sessoes WHERE usuario_id = ${id}`
       await sql`UPDATE acessos_rapidos SET revogado_em = NOW() WHERE usuario_id = ${id} AND revogado_em IS NULL`
     }
+
+    await logAdminAction(admin, {
+      action: payload.senha ? 'atualizar_usuario_e_senha' : 'atualizar_usuario',
+      entity: 'usuario',
+      entityId: id,
+      description: `Usuário ${rows[0].nome} atualizado.`,
+      before: beforeRows[0] || null,
+      after: serializeUser(rows[0]),
+    })
 
     return res.status(200).json({
       status: 'ok',
