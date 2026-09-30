@@ -20,16 +20,6 @@ export default async function handler(req, res) {
           AND UPPER(COALESCE(u.perfil, '')) = 'AJUDANTE'
         ORDER BY u.turno, u.nome
       `
-      await logAdminAction(admin, {
-        action: semTeto ? 'remover_teto' : 'alterar_teto',
-        entity: 'remuneracao_teto',
-        entityId: usuarioId,
-        description: semTeto
-          ? `Teto removido de ${userRows[0].nome}.`
-          : `Teto de ${userRows[0].nome} alterado para R$ ${value.toFixed(2)}.`,
-        before: beforeRows[0] || null,
-        after: semTeto ? null : { valor_teto: value },
-      })
 
       return res.status(200).json({
         status: 'ok',
@@ -55,6 +45,7 @@ export default async function handler(req, res) {
       if (!semTeto && (!Number.isFinite(value) || value < 0 || value > 100000)) {
         return res.status(400).json({ status: 'error', message: 'Informe um teto válido.' })
       }
+
       const userRows = await sql`
         SELECT id, nome, turno
         FROM usuarios
@@ -63,11 +54,17 @@ export default async function handler(req, res) {
           AND UPPER(COALESCE(perfil, '')) = 'AJUDANTE'
         LIMIT 1
       `
+
       if (!userRows[0]) {
         return res.status(404).json({ status: 'error', message: 'Ajudante não encontrado ou inativo.' })
       }
 
-      const beforeRows = await sql`SELECT valor_teto FROM remuneracao_tetos WHERE usuario_id = ${usuarioId} LIMIT 1`
+      const beforeRows = await sql`
+        SELECT valor_teto
+        FROM remuneracao_tetos
+        WHERE usuario_id = ${usuarioId}
+        LIMIT 1
+      `
 
       if (semTeto) {
         await sql`DELETE FROM remuneracao_tetos WHERE usuario_id = ${usuarioId}`
@@ -85,6 +82,18 @@ export default async function handler(req, res) {
                         atualizado_em = NOW()
         `
       }
+
+      await logAdminAction(admin, {
+        action: semTeto ? 'remover_teto' : 'alterar_teto',
+        entity: 'remuneracao_teto',
+        entityId: usuarioId,
+        description: semTeto
+          ? `Teto removido de ${userRows[0].nome}.`
+          : `Teto de ${userRows[0].nome} alterado para R$ ${value.toFixed(2)}.`,
+        before: beforeRows[0] || null,
+        after: semTeto ? null : { valor_teto: value },
+      })
+
       return res.status(200).json({
         status: 'ok',
         message: semTeto
