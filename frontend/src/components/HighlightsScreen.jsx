@@ -32,6 +32,7 @@ export default function HighlightsScreen({ adminMode = false }) {
   const [dataBase, setDataBase] = useState(today())
   const [usuarioId, setUsuarioId] = useState('')
   const [motivo, setMotivo] = useState('')
+  const [exibirPainel, setExibirPainel] = useState(false)
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -86,16 +87,34 @@ export default function HighlightsScreen({ adminMode = false }) {
         periodo_tipo: periodo,
         data_base: dataBase,
         motivo,
+        exibir_painel: exibirPainel,
       })
       setSuccess(result.message)
       setUsuarioId('')
       setMotivo('')
+      setExibirPainel(false)
       setSearch('')
       await load()
     } catch (e) {
       setError(e.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function toggleDashboard(item) {
+    setError('')
+    setSuccess('')
+    try {
+      const result = await api.post('/api/highlights', {
+        action: 'toggle_dashboard',
+        id: item.id,
+        exibir_painel: !item.exibir_painel,
+      })
+      setSuccess(result.message)
+      await load()
+    } catch (e) {
+      setError(e.message)
     }
   }
 
@@ -248,6 +267,18 @@ export default function HighlightsScreen({ adminMode = false }) {
             />
           </label>
 
+          <label className="highlight-dashboard-check">
+            <input
+              type="checkbox"
+              checked={exibirPainel}
+              onChange={(e) => setExibirPainel(e.target.checked)}
+            />
+            <span>
+              <strong>Exibir no painel inicial</strong>
+              <small>Quando marcado, este destaque aparece na primeira tela para toda a operação.</small>
+            </span>
+          </label>
+
           <button className="primary-action-button" type="submit" disabled={saving}>
             {saving ? 'Salvando...' : '★ Dar estrela e publicar'}
           </button>
@@ -303,13 +334,22 @@ export default function HighlightsScreen({ adminMode = false }) {
                 <span>{item.estrelas === 1 ? 'estrela acumulada' : 'estrelas acumuladas'}</span>
               </div>
               {adminMode && (
-                <button
-                  className="highlight-delete"
-                  type="button"
-                  onClick={() => remove(item)}
-                >
-                  Remover
-                </button>
+                <div className="highlight-admin-card-actions">
+                  <button
+                    className={item.exibir_painel ? 'highlight-dashboard-toggle active' : 'highlight-dashboard-toggle'}
+                    type="button"
+                    onClick={() => toggleDashboard(item)}
+                  >
+                    {item.exibir_painel ? '★ No painel' : '☆ Mostrar no painel'}
+                  </button>
+                  <button
+                    className="highlight-delete"
+                    type="button"
+                    onClick={() => remove(item)}
+                  >
+                    Remover
+                  </button>
+                </div>
               )}
             </article>
           ))}
