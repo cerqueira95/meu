@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
+import { logAdminAction } from '../_lib/remuneration-admin.js'
 
 const PROFILES = ['ADM', 'Operador', 'Ajudante', 'Conferente']
 const STATUSES = ['ativo', 'inativo']
@@ -95,6 +96,14 @@ export default async function handler(req, res) {
           ultimo_login,
           criado_em
       `
+
+      await logAdminAction(admin, {
+        action: 'criar_usuario',
+        entity: 'usuario',
+        entityId: rows[0].id,
+        description: `Usuário ${rows[0].nome} criado.`,
+        after: serializeUser(rows[0]),
+      })
 
       return res.status(201).json({
         status: 'ok',
