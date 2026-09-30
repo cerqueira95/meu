@@ -229,7 +229,7 @@ export async function saveWmsTaskCollection({ date, source, rows }) {
   let withoutUser = 0
   let withoutValue = 0
 
-  for (const row of completedRows) {
+  const preparedRows = completedRows.map((row) => {
     const typeName = textOrNull(row.workType) || 'Tarefa sem tipo'
     const typeKey = normalizeWmsTaskKey(typeName)
     const userName = textOrNull(row.userName)
@@ -243,77 +243,98 @@ export async function saveWmsTaskCollection({ date, source, rows }) {
 
     if (unitValue <= 0) withoutValue += 1
 
-    const taskId = stableTaskId(date, row)
+    return {
+      row,
+      typeName,
+      typeKey,
+      userName,
+      userId: matchedUser ? Number(matchedUser.id) : null,
+      unitValue,
+      taskId: stableTaskId(date, row),
+    }
+  })
 
-    await sql`
-      INSERT INTO wms_tarefas_registros (
-        wms_task_id,
-        data_ref,
-        documento,
-        origem,
-        destino,
-        palete,
-        status,
-        status_id,
-        tipo_nome,
-        tipo_chave,
-        usuario_nome_wms,
-        usuario_id,
-        data_criacao,
-        data_associacao,
-        data_liberacao,
-        data_alteracao,
-        placa_cavalo,
-        placa_carreta,
-        tarefa,
-        prioridade,
-        valor_unitario,
-        importado_em
-      )
-      VALUES (
-        ${taskId},
-        ${date}::date,
-        ${textOrNull(row.documentNumber)},
-        ${textOrNull(row.fromLocationCode)},
-        ${textOrNull(row.locationCode)},
-        ${textOrNull(row.palletDescription)},
-        ${textOrNull(row.status)},
-        ${numberOrNull(row.statusId)},
-        ${typeName},
-        ${typeKey},
-        ${userName},
-        ${matchedUser ? Number(matchedUser.id) : null},
-        ${textOrNull(row.createdDateInfo)},
-        ${textOrNull(row.lastAssociationDate)},
-        ${textOrNull(row.releaseDate)},
-        ${textOrNull(row.updatedDate)},
-        ${textOrNull(row.truckPlate)},
-        ${textOrNull(row.trailerPlate)},
-        ${textOrNull(row.sequenceId)},
-        ${textOrNull(row.priority)},
-        ${unitValue},
-        NOW()
-      )
-      ON CONFLICT (wms_task_id)
-      DO UPDATE SET
-        documento = EXCLUDED.documento,
-        origem = EXCLUDED.origem,
-        destino = EXCLUDED.destino,
-        palete = EXCLUDED.palete,
-        status = EXCLUDED.status,
-        status_id = EXCLUDED.status_id,
-        tipo_nome = EXCLUDED.tipo_nome,
-        usuario_nome_wms = COALESCE(EXCLUDED.usuario_nome_wms, wms_tarefas_registros.usuario_nome_wms),
-        usuario_id = COALESCE(wms_tarefas_registros.usuario_id, EXCLUDED.usuario_id),
-        data_criacao = EXCLUDED.data_criacao,
-        data_associacao = EXCLUDED.data_associacao,
-        data_liberacao = EXCLUDED.data_liberacao,
-        data_alteracao = EXCLUDED.data_alteracao,
-        placa_cavalo = EXCLUDED.placa_cavalo,
-        placa_carreta = EXCLUDED.placa_carreta,
-        tarefa = EXCLUDED.tarefa,
-        prioridade = EXCLUDED.prioridade
-    `
+  // Neon é remoto. Inserir uma linha por vez deixava coletas grandes muito lentas.
+  // Processamos pequenos lotes em paralelo para manter o endpoint dentro do tempo do cron.
+  const batchSize = 25
+  for (let start = 0; start < preparedRows.length; start += batchSize) {
+    const batch = preparedRows.slice(start, start + batchSize)
+
+    await Promise.all(
+      batch.map(async (item) => {
+        const { row, typeName, typeKey, userName, userId, unitValue, taskId } = item
+
+        await sql`
+          INSERT INTO wms_tarefas_registros (
+            wms_task_id,
+            data_ref,
+            documento,
+            origem,
+            destino,
+            palete,
+            status,
+            status_id,
+            tipo_nome,
+            tipo_chave,
+            usuario_nome_wms,
+            usuario_id,
+            data_criacao,
+            data_associacao,
+            data_liberacao,
+            data_alteracao,
+            placa_cavalo,
+            placa_carreta,
+            tarefa,
+            prioridade,
+            valor_unitario,
+            importado_em
+          )
+          VALUES (
+            ${taskId},
+            ${date}::date,
+            ${textOrNull(row.documentNumber)},
+            ${textOrNull(row.fromLocationCode)},
+            ${textOrNull(row.locationCode)},
+            ${textOrNull(row.palletDescription)},
+            ${textOrNull(row.status)},
+            ${numberOrNull(row.statusId)},
+            ${typeName},
+            ${typeKey},
+            ${userName},
+            ${userId},
+            ${textOrNull(row.createdDateInfo)},
+            ${textOrNull(row.lastAssociationDate)},
+            ${textOrNull(row.releaseDate)},
+            ${textOrNull(row.updatedDate)},
+            ${textOrNull(row.truckPlate)},
+            ${textOrNull(row.trailerPlate)},
+            ${textOrNull(row.sequenceId)},
+            ${textOrNull(row.priority)},
+            ${unitValue},
+            NOW()
+          )
+          ON CONFLICT (wms_task_id)
+          DO UPDATE SET
+            documento = EXCLUDED.documento,
+            origem = EXCLUDED.origem,
+            destino = EXCLUDED.destino,
+            palete = EXCLUDED.palete,
+            status = EXCLUDED.status,
+            status_id = EXCLUDED.status_id,
+            tipo_nome = EXCLUDED.tipo_nome,
+            usuario_nome_wms = COALESCE(EXCLUDED.usuario_nome_wms, wms_tarefas_registros.usuario_nome_wms),
+            usuario_id = COALESCE(wms_tarefas_registros.usuario_id, EXCLUDED.usuario_id),
+            data_criacao = EXCLUDED.data_criacao,
+            data_associacao = EXCLUDED.data_associacao,
+            data_liberacao = EXCLUDED.data_liberacao,
+            data_alteracao = EXCLUDED.data_alteracao,
+            placa_cavalo = EXCLUDED.placa_cavalo,
+            placa_carreta = EXCLUDED.placa_carreta,
+            tarefa = EXCLUDED.tarefa,
+            prioridade = EXCLUDED.prioridade
+        `
+      }),
+    )
   }
 
   await sql`
