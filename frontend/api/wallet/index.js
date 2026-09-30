@@ -7,6 +7,7 @@ import {
   resolveMonth,
   roundMoney,
 } from '../_lib/wallet.js'
+import { ensureWmsTaskSchema } from '../_lib/wms-tasks.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -20,7 +21,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    await ensureWalletSchema()
+    await Promise.all([
+      ensureWalletSchema(),
+      ensureWmsTaskSchema(),
+    ])
+
     const month = resolveMonth(req.query?.mes)
     const { start, endExclusive } = monthRange(month)
 
@@ -32,7 +37,8 @@ export default async function handler(req, res) {
     `
     const user = userRows[0]
     if (!user) return res.status(404).json({ status: 'error', message: 'Usuário não encontrado.' })
-    const [capRows, wmsRows, escalonadaRows, activityRows] = await Promise.all([
+
+    const [capRows, wmsRows, taskRows, escalonadaRows, activityRows] = await Promise.all([
       sql`
         SELECT valor_teto FROM remuneracao_tetos
         WHERE usuario_id = ${user.id}
@@ -55,6 +61,21 @@ export default async function handler(req, res) {
         ORDER BY data_ref
       `,
       sql`
+        SELECT
+          data_ref,
+          tipo_chave,
+          tipo_nome,
+          valor_unitario,
+          COUNT(*)::int AS quantidade,
+          COALESCE(SUM(valor_unitario), 0)::numeric AS valor
+        FROM wms_tarefas_registros
+        WHERE usuario_id = ${user.id}
+          AND data_ref >= ${start}::date
+          AND data_ref < ${endExclusive}::date
+        GROUP BY data_ref, tipo_chave, tipo_nome, valor_unitario
+        ORDER BY data_ref, tipo_nome
+      `,
+      sql`
         SELECT data_ref,
                COALESCE(incentivo, 0)::numeric AS valor,
                percentual
@@ -64,7 +85,8 @@ export default async function handler(req, res) {
           AND data_ref < ${endExclusive}::date
           AND incentivo > 0
         ORDER BY data_ref
-      `,      sql`
+      `,
+      sql`
         SELECT
           l.id,
           l.data_atividade,
@@ -100,6 +122,23 @@ export default async function handler(req, res) {
       })
     }
 
+    for (const row of taskRows) {
+      const quantity = Number(row.quantidade || 0)
+      const unitValue = Number(row.valor_unitario || 0)
+
+      entries.push({
+        id: `wms-tarefa-${row.data_ref}-${row.tipo_chave}-${unitValue}`,
+        data: row.data_ref,
+        tipo: 'wms_tarefa',
+        titulo: row.tipo_nome,
+        detalhe: `${quantity} ${quantity === 1 ? 'tarefa concluída' : 'tarefas concluídas'} • ${moneyBr(unitValue)} cada`,
+        tarefa_chave: row.tipo_chave,
+        quantidade: quantity,
+        valor_unitario: unitValue,
+        valor_original: Number(row.valor || 0),
+      })
+    }
+
     for (const row of escalonadaRows) {
       entries.push({
         id: `esc-${row.data_ref}`,
@@ -109,7 +148,9 @@ export default async function handler(req, res) {
         detalhe: `Incentivo de ${Number(row.percentual || 0)}%`,
         valor_original: Number(row.valor || 0),
       })
-    }    for (const row of activityRows) {
+    }
+
+    for (const row of activityRows) {
       const unitValue = Number(row.valor_unitario || 0)
       const quantity = Number(row.quantidade_calculo || 1)
       entries.push({
@@ -128,16 +169,17 @@ export default async function handler(req, res) {
     entries.sort((a, b) => {
       const dateCompare = String(a.data).localeCompare(String(b.data))
       if (dateCompare !== 0) return dateCompare
-      const priority = { wms: 1, escalonada: 2, atividade: 3 }
+      const priority = { wms: 1, wms_tarefa: 2, escalonada: 3, atividade: 4 }
       return (priority[a.tipo] || 9) - (priority[b.tipo] || 9)
     })
 
     const cap = capRows[0]?.valor_teto == null ? null : Number(capRows[0].valor_teto)
     const extract = applyWalletCap(entries, cap)
     const totalWms = roundMoney(entries.filter((e) => e.tipo === 'wms').reduce((s, e) => s + Number(e.valor_original || 0), 0))
+    const totalWmsTasks = roundMoney(entries.filter((e) => e.tipo === 'wms_tarefa').reduce((s, e) => s + Number(e.valor_original || 0), 0))
     const totalEscalonada = roundMoney(entries.filter((e) => e.tipo === 'escalonada').reduce((s, e) => s + Number(e.valor_original || 0), 0))
     const totalActivities = roundMoney(entries.filter((e) => e.tipo === 'atividade').reduce((s, e) => s + Number(e.valor_original || 0), 0))
-    const bruto = roundMoney(totalWms + totalEscalonada + totalActivities)
+    const bruto = roundMoney(totalWms + totalWmsTasks + totalEscalonada + totalActivities)
     const saldo = roundMoney(extract.reduce((s, e) => s + Number(e.valor_creditado || 0), 0))
 
     return res.status(200).json({
@@ -156,6 +198,7 @@ export default async function handler(req, res) {
       },
       totais: {
         valor_wms: totalWms,
+        tarefas_wms: totalWmsTasks,
         escalonada: totalEscalonada,
         atividades: totalActivities,
         bruto,
@@ -171,4 +214,11 @@ export default async function handler(req, res) {
       message: 'Não foi possível carregar sua carteira.',
     })
   }
+}
+
+function moneyBr(value) {
+  return Number(value || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
 }
