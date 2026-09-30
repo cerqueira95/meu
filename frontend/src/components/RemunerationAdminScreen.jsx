@@ -334,7 +334,11 @@ export default function RemunerationAdminScreen() {
                   style={s.primaryButton}
                   type="button"
                   disabled={busy || currentClosure.status === 'fechado'}
-                  onClick={() => runAction('fechar_mes', { mes: month })}
+                  onClick={() => {
+                    if (window.confirm(`Fechar ${month}? A carteira desse mês ficará congelada até que o mês seja reaberto.`)) {
+                      runAction('fechar_mes', { mes: month })
+                    }
+                  }}
                 >
                   {busy === 'fechar_mes' ? 'Fechando...' : 'Fechar e congelar mês'}
                 </button>
@@ -343,7 +347,11 @@ export default function RemunerationAdminScreen() {
                     style={s.dangerButton}
                     type="button"
                     disabled={busy}
-                    onClick={() => runAction('reabrir_mes', { mes: month })}
+                    onClick={() => {
+                      if (window.confirm(`Reabrir ${month}? Os valores voltarão a ser calculados com os dados atuais.`)) {
+                        runAction('reabrir_mes', { mes: month })
+                      }
+                    }}
                   >
                     {busy === 'reabrir_mes' ? 'Reabrindo...' : 'Reabrir mês'}
                   </button>
