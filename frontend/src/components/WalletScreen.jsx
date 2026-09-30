@@ -18,6 +18,13 @@ function currentMonth() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
+function entryIcon(item) {
+  if (item.tipo === 'wms') return 'W'
+  if (item.tipo === 'wms_tarefa') return 'T'
+  if (item.tipo === 'escalonada') return 'E'
+  return 'A'
+}
+
 export default function WalletScreen() {
   const [month, setMonth] = useState(currentMonth())
   const [data, setData] = useState(null)
@@ -49,7 +56,7 @@ export default function WalletScreen() {
         <div>
           <span className="dashboard-kicker">REMUNERAÇÃO VARIÁVEL</span>
           <h1>Minha carteira</h1>
-          <p>Acompanhe o Valor WMS, escalonada, atividades e seu limite mensal.</p>
+          <p>Acompanhe o Valor WMS, tarefas WMS, escalonada, atividades e seu limite mensal.</p>
         </div>
         <label className="wallet-month">
           <span>Mês</span>
@@ -75,10 +82,28 @@ export default function WalletScreen() {
               {data.teto?.possui && <small>Disponível: {money(data.teto.restante)}</small>}
             </div>
           </div>
+
           <div className="wallet-summary-grid">
-            <article><span>Valor WMS</span><strong>{money(data.totais?.valor_wms)}</strong><small>Valor vindo do Rateio WMS</small></article>
-            <article><span>Escalonada</span><strong>{money(data.totais?.escalonada)}</strong><small>Somente o incentivo adicional</small></article>
-            <article><span>Atividades</span><strong>{money(data.totais?.atividades)}</strong><small>Atividades aprovadas pelo ADM</small></article>
+            <article>
+              <span>Valor WMS</span>
+              <strong>{money(data.totais?.valor_wms)}</strong>
+              <small>Valor vindo do Rateio WMS</small>
+            </article>
+            <article>
+              <span>Tarefas WMS</span>
+              <strong>{money(data.totais?.tarefas_wms)}</strong>
+              <small>Tarefas concluídas do Monitorar Tarefas</small>
+            </article>
+            <article>
+              <span>Escalonada</span>
+              <strong>{money(data.totais?.escalonada)}</strong>
+              <small>Somente o incentivo adicional</small>
+            </article>
+            <article>
+              <span>Atividades</span>
+              <strong>{money(data.totais?.atividades)}</strong>
+              <small>Atividades aprovadas pelo ADM</small>
+            </article>
             <article>
               <span>Gerado no mês</span>
               <strong>{money(data.totais?.bruto)}</strong>
@@ -96,7 +121,7 @@ export default function WalletScreen() {
               {(data.extrato || []).map((item) => (
                 <article key={item.id}>
                   <div className={`wallet-entry-icon ${item.tipo}`}>
-                    {item.tipo === 'wms' ? 'W' : item.tipo === 'escalonada' ? 'E' : 'A'}
+                    {entryIcon(item)}
                   </div>
                   <div className="wallet-entry-copy">
                     <strong>{item.titulo}</strong>
