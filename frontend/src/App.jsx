@@ -12,6 +12,7 @@ import ActivityValuesScreen from './components/ActivityValuesScreen.jsx'
 import WalletScreen from './components/WalletScreen.jsx'
 import WalletCapsScreen from './components/WalletCapsScreen.jsx'
 import HighlightsScreen from './components/HighlightsScreen.jsx'
+import './components/DashboardHighlights.css'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
