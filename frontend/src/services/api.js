@@ -38,4 +38,12 @@ export const api = {
       body: JSON.stringify(data),
     })
   },
+
+  patch(path, data = {}, options = {}) {
+    return request(path, {
+      ...options,
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
 }
