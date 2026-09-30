@@ -17,10 +17,13 @@ export default function ActivityValuesScreen() {
   const [items, setItems] = useState([])
   const [users, setUsers] = useState([])
   const [values, setValues] = useState({})
+  const [wmsItems, setWmsItems] = useState([])
+  const [wmsValues, setWmsValues] = useState({})
   const [scope, setScope] = useState('todos')
   const [selectedUsers, setSelectedUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState('')
+  const [savingWmsKey, setSavingWmsKey] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -33,13 +36,31 @@ export default function ActivityValuesScreen() {
     setError('')
 
     try {
-      const data = await api.get('/api/activities/settings')
-      const activities = data.atividades || []
+      const [activityData, wmsData] = await Promise.all([
+        api.get('/api/activities/settings'),
+        api.get('/api/wms/task-values'),
+      ])
+
+      const activities = activityData.atividades || []
+      const tasks = wmsData.tarefas || []
+
       setItems(activities)
-      setUsers(data.usuarios || [])
+      setUsers(activityData.usuarios || [])
       setValues(
         Object.fromEntries(
-          activities.map((item) => [item.chave, String(Number(item.valor_unitario || 0).toFixed(2)).replace('.', ',')]),
+          activities.map((item) => [
+            item.chave,
+            String(Number(item.valor_unitario || 0).toFixed(2)).replace('.', ','),
+          ]),
+        ),
+      )
+      setWmsItems(tasks)
+      setWmsValues(
+        Object.fromEntries(
+          tasks.map((item) => [
+            item.chave,
+            String(Number(item.valor_unitario || 0).toFixed(2)).replace('.', ','),
+          ]),
         ),
       )
     } catch (requestError) {
@@ -89,6 +110,34 @@ export default function ActivityValuesScreen() {
       setError(requestError.message)
     } finally {
       setSavingKey('')
+    }
+  }
+
+  async function saveWms(item) {
+    const raw = String(wmsValues[item.chave] || '').replace(',', '.')
+    const amount = Number(raw)
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      setError('Informe um valor válido para a tarefa WMS.')
+      return
+    }
+
+    setSavingWmsKey(item.chave)
+    setError('')
+    setMessage('')
+
+    try {
+      const data = await api.post('/api/wms/task-values', {
+        chave: item.chave,
+        valor_unitario: amount,
+      })
+
+      setMessage(`${item.nome}: ${data.message}`)
+      await load()
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setSavingWmsKey('')
     }
   }
 
@@ -158,56 +207,119 @@ export default function ActivityValuesScreen() {
       {loading ? (
         <div className="activities-loading">Carregando valores...</div>
       ) : (
-        <div className="activity-values-grid">
-          {items.map((item) => (
-            <article className="activity-value-card" key={item.chave}>
-              <div className="activity-value-card-head">
-                <div>
-                  <span className="activity-value-tag">{item.ativo ? 'Ativa' : 'Inativa'}</span>
-                  <h2>{item.nome}</h2>
+        <>
+          <div className="activity-values-grid">
+            {items.map((item) => (
+              <article className="activity-value-card" key={item.chave}>
+                <div className="activity-value-card-head">
+                  <div>
+                    <span className="activity-value-tag">{item.ativo ? 'Ativa' : 'Inativa'}</span>
+                    <h2>{item.nome}</h2>
+                  </div>
+                  <span className="activity-value-current">{currency(item.valor_unitario)}</span>
                 </div>
-                <span className="activity-value-current">{currency(item.valor_unitario)}</span>
-              </div>
 
-              <div className="activity-value-edit">
-                <label htmlFor={`value-${item.chave}`}>Novo valor unitário</label>
-                <div className="activity-value-input-wrap">
-                  <span>R$</span>
-                  <input
-                    id={`value-${item.chave}`}
-                    inputMode="decimal"
-                    value={values[item.chave] ?? ''}
-                    onChange={(event) =>
-                      setValues((current) => ({
-                        ...current,
-                        [item.chave]: normalizeInput(event.target.value).replace('.', ','),
-                      }))
-                    }
-                    placeholder="0,00"
-                  />
+                <div className="activity-value-edit">
+                  <label htmlFor={`value-${item.chave}`}>Novo valor unitário</label>
+                  <div className="activity-value-input-wrap">
+                    <span>R$</span>
+                    <input
+                      id={`value-${item.chave}`}
+                      inputMode="decimal"
+                      value={values[item.chave] ?? ''}
+                      onChange={(event) =>
+                        setValues((current) => ({
+                          ...current,
+                          [item.chave]: normalizeInput(event.target.value).replace('.', ','),
+                        }))
+                      }
+                      placeholder="0,00"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <button
-                className="activity-value-save"
-                type="button"
-                onClick={() => save(item)}
-                disabled={savingKey === item.chave}
-              >
-                {savingKey === item.chave ? 'Salvando...' : 'Salvar valor'}
-              </button>
-            </article>
-          ))}
-        </div>
+                <button
+                  className="activity-value-save"
+                  type="button"
+                  onClick={() => save(item)}
+                  disabled={savingKey === item.chave}
+                >
+                  {savingKey === item.chave ? 'Salvando...' : 'Salvar valor'}
+                </button>
+              </article>
+            ))}
+          </div>
+
+          <div className="activity-values-note">
+            <strong>Importante:</strong>
+            <span>
+              alterar um valor não muda lançamentos que já foram feitos. Cada lançamento
+              guarda o valor vigente no momento em que foi criado.
+            </span>
+          </div>
+
+          <section className="activity-value-scope">
+            <div>
+              <span className="dashboard-kicker">WMS • EMPILHADEIRA</span>
+              <h2>Valores das tarefas do Monitorar Tarefas</h2>
+              <p>
+                Estes valores são usados somente para tarefas com status Completa vinculadas
+                a usuários ativos cujo Cargo no Warehouse seja Empilhadeira.
+              </p>
+            </div>
+          </section>
+
+          <div className="activity-values-grid">
+            {wmsItems.map((item, index) => (
+              <article className="activity-value-card" key={item.chave}>
+                <div className="activity-value-card-head">
+                  <div>
+                    <span className="activity-value-tag">{item.ativo ? 'Ativa' : 'Inativa'}</span>
+                    <h2>{item.nome}</h2>
+                  </div>
+                  <span className="activity-value-current">{currency(item.valor_unitario)}</span>
+                </div>
+
+                <div className="activity-value-edit">
+                  <label htmlFor={`wms-value-${index}`}>Novo valor por tarefa concluída</label>
+                  <div className="activity-value-input-wrap">
+                    <span>R$</span>
+                    <input
+                      id={`wms-value-${index}`}
+                      inputMode="decimal"
+                      value={wmsValues[item.chave] ?? ''}
+                      onChange={(event) =>
+                        setWmsValues((current) => ({
+                          ...current,
+                          [item.chave]: normalizeInput(event.target.value).replace('.', ','),
+                        }))
+                      }
+                      placeholder="0,00"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  className="activity-value-save"
+                  type="button"
+                  onClick={() => saveWms(item)}
+                  disabled={savingWmsKey === item.chave}
+                >
+                  {savingWmsKey === item.chave ? 'Salvando...' : 'Salvar valor WMS'}
+                </button>
+              </article>
+            ))}
+          </div>
+
+          <div className="activity-values-note">
+            <strong>Regra WMS:</strong>
+            <span>
+              a coleta usa D-1 e D0, considera apenas tarefas concluídas e não duplica
+              uma tarefa já importada. Alterações de valor valem apenas para novas tarefas.
+            </span>
+          </div>
+        </>
       )}
-
-      <div className="activity-values-note">
-        <strong>Importante:</strong>
-        <span>
-          alterar um valor não muda lançamentos que já foram feitos. Cada lançamento
-          guarda o valor vigente no momento em que foi criado.
-        </span>
-      </div>
     </section>
   )
 }
