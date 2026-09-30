@@ -12,6 +12,7 @@ import ActivityValuesScreen from './components/ActivityValuesScreen.jsx'
 import WalletScreen from './components/WalletScreen.jsx'
 import WalletCapsScreen from './components/WalletCapsScreen.jsx'
 import HighlightsScreen from './components/HighlightsScreen.jsx'
+import ChangePasswordScreen from './components/ChangePasswordScreen.jsx'
 import './components/DashboardHighlights.css'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
@@ -1311,6 +1312,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     ...(isAdmin ? [{ id: 'valores-atividades', label: 'Valores das atividades', icon: 'configuracoes' }] : []),
     ...(isAdmin ? [{ id: 'tetos-carteira', label: 'Tetos da carteira', icon: 'carteira' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
+    { id: 'alterar-senha', label: 'Alterar senha', icon: 'configuracoes' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     ...(isAdmin ? [{ id: 'relatorios', label: 'Relatórios', icon: 'relatorios' }] : []),
   ]
@@ -1389,6 +1391,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     'aprovar-atividades': { title: 'Aprovar atividades', description: 'Fila central para revisar, editar, aprovar ou reprovar lançamentos.', icon: 'atividades' },
     'valores-atividades': { title: 'Valores das atividades', description: 'Configuração dos valores unitários das atividades.', icon: 'configuracoes' },
     'tetos-carteira': { title: 'Tetos da carteira', description: 'Limite mensal individual dos ajudantes.', icon: 'carteira' },
+    'alterar-senha': { title: 'Alterar senha', description: 'Atualize sua senha de acesso com segurança.', icon: 'configuracoes' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
 
@@ -1746,6 +1749,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <HighlightsScreen adminMode />
           ) : activeSection === 'escalonada' ? (
             <EscalonadaScreen />
+          ) : activeSection === 'alterar-senha' ? (
+            <ChangePasswordScreen onChanged={() => storeQuickAccess(null)} />
           ) : activeSection === 'relatorios' && isAdmin ? (
             <EscalonadaAdminScreen />
           ) : activeSection === 'configuracoes' && isAdmin ? (
