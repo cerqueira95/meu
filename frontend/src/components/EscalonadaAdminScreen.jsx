@@ -64,6 +64,8 @@ export default function EscalonadaAdminScreen() {
   const [data, setData] = useState(emptyReport)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+  const [manualRunning, setManualRunning] = useState(false)
+  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
@@ -133,6 +135,41 @@ export default function EscalonadaAdminScreen() {
       setError(requestError.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function runManualCollection() {
+    if (!from || !to) {
+      setError('Selecione a data que deseja atualizar.')
+      return
+    }
+
+    if (from !== to) {
+      setError('Para rodar a coleta manual, selecione a mesma data no início e no final.')
+      return
+    }
+
+    setManualRunning(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const result = await api.post('/api/admin/remuneration', {
+        action: 'reprocessar',
+        data: from,
+        origem: 'rateio',
+      })
+
+      const refreshed = await fetchReport(from, to)
+      setData(refreshed)
+      setMessage(
+        result.message ||
+          `Coleta de ${dateLabel(from)} atualizada com sucesso, sem duplicar registros.`,
+      )
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setManualRunning(false)
     }
   }
 
@@ -309,8 +346,17 @@ export default function EscalonadaAdminScreen() {
             />
           </label>
 
-          <button style={styles.primaryButton} type="submit" disabled={loading}>
+          <button style={styles.primaryButton} type="submit" disabled={loading || manualRunning}>
             {loading ? 'Carregando...' : 'Aplicar período'}
+          </button>
+
+          <button
+            style={styles.manualButton}
+            type="button"
+            onClick={runManualCollection}
+            disabled={loading || manualRunning}
+          >
+            {manualRunning ? 'Atualizando WMS...' : 'Rodar coleta da data'}
           </button>
 
           <button
@@ -325,6 +371,7 @@ export default function EscalonadaAdminScreen() {
       </form>
 
       {error && <div style={styles.error}>{error}</div>}
+      {message && <div style={styles.success}>{message}</div>}
 
       <div style={styles.cards}>
         <article style={styles.card}>
@@ -590,6 +637,16 @@ const styles = {
     padding: '0 17px',
     cursor: 'pointer',
   },
+  manualButton: {
+    height: 40,
+    border: '1px solid #155eef',
+    borderRadius: 10,
+    background: '#eef4ff',
+    color: '#1849a9',
+    fontWeight: 900,
+    padding: '0 17px',
+    cursor: 'pointer',
+  },
   secondaryButton: {
     height: 40,
     border: '1px solid #d5dde8',
@@ -749,6 +806,15 @@ const styles = {
     textAlign: 'center',
     color: '#7f8b9d',
     fontSize: 13,
+  },
+  success: {
+    padding: '12px 14px',
+    borderRadius: 12,
+    background: '#ecfdf3',
+    color: '#027a48',
+    border: '1px solid #abefc6',
+    fontSize: 12,
+    fontWeight: 700,
   },
   error: {
     padding: '12px 14px',
