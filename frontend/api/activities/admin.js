@@ -393,8 +393,16 @@ export default async function handler(req, res) {
           entity: 'atividade_lancamento',
           entityId: id,
           description: `Atividade ${current.atividade_nome} #${id} editada.`,
-          before: current,
-          after: edited,
+          before: {
+            participantes: current.participantes?.length || 0,
+            itens: current.itens?.length || 0,
+            observacao: current.observacao || '',
+          },
+          after: {
+            participantes: edited.participantes?.length || 0,
+            itens: edited.itens?.length || 0,
+            observacao: edited.observacao || '',
+          },
         })
 
         return res.status(200).json({
