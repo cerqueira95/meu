@@ -1,5 +1,6 @@
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
+import { isMonthClosed, logAdminAction } from '../_lib/remuneration-admin.js'
 import {
   currentBahiaDate,
   ensureActivitiesSchema,
@@ -74,6 +75,13 @@ export default async function handler(req, res) {
         return res.status(404).json({ status: 'error', message: 'Lançamento não encontrado.' })
       }
 
+      if (await isMonthClosed(current.data_atividade)) {
+        return res.status(409).json({
+          status: 'error',
+          message: 'O mês deste lançamento está fechado. Reabra o mês antes de alterar a atividade.',
+        })
+      }
+
       if (action === 'aprovar') {
         if (current.status !== 'pendente') {
           return res.status(409).json({
@@ -116,6 +124,15 @@ export default async function handler(req, res) {
             )
           `
         }
+
+        await logAdminAction(admin, {
+          action: 'aprovar_atividade',
+          entity: 'atividade_lancamento',
+          entityId: id,
+          description: `Atividade ${approvedBatch.atividade_nome} #${id} aprovada.`,
+          before: { status: current.status },
+          after: { status: 'aprovado' },
+        })
 
         return res.status(200).json({
           status: 'ok',
@@ -174,6 +191,15 @@ export default async function handler(req, res) {
             )
           `
         }
+
+        await logAdminAction(admin, {
+          action: 'reprovar_atividade',
+          entity: 'atividade_lancamento',
+          entityId: id,
+          description: `Atividade ${rejectedBatch.atividade_nome} #${id} reprovada.`,
+          before: { status: current.status },
+          after: { status: 'reprovado', motivo },
+        })
 
         return res.status(200).json({
           status: 'ok',
@@ -361,10 +387,20 @@ export default async function handler(req, res) {
           `
         }
 
+        const edited = await loadActivityBatch(id)
+        await logAdminAction(admin, {
+          action: 'editar_atividade',
+          entity: 'atividade_lancamento',
+          entityId: id,
+          description: `Atividade ${current.atividade_nome} #${id} editada.`,
+          before: current,
+          after: edited,
+        })
+
         return res.status(200).json({
           status: 'ok',
           message: 'Lançamento atualizado.',
-          lancamento: await loadActivityBatch(id),
+          lancamento: edited,
         })
       }
 
