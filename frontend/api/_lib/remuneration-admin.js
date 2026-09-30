@@ -8,7 +8,19 @@ import {
 } from './wallet.js'
 import { ensureWmsTaskSchema } from './wms-tasks.js'
 
-export async function ensureRemunerationAdminSchema() {
+let remunerationAdminSchemaPromise = null
+
+export function ensureRemunerationAdminSchema() {
+  if (!remunerationAdminSchemaPromise) {
+    remunerationAdminSchemaPromise = createRemunerationAdminSchema().catch((error) => {
+      remunerationAdminSchemaPromise = null
+      throw error
+    })
+  }
+  return remunerationAdminSchemaPromise
+}
+
+async function createRemunerationAdminSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS admin_auditoria (
       id BIGSERIAL PRIMARY KEY,
