@@ -53,6 +53,8 @@ const routes = new Map([
   ['/api/activities/notifications', './api/activities/notifications.js'],
   ['/api/activities/settings', './api/activities/settings.js'],
   ['/api/wallet', './api/wallet/index.js'],
+  ['/api/wallet/task-details', './api/wallet/task-details.js'],
+  ['/api/admin/remuneration', './api/admin/remuneration.js'],
   ['/api/wallet/caps', './api/wallet/caps.js'],
 ])
 
