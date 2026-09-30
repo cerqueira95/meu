@@ -43,7 +43,7 @@ export default async function handler(req, res) {
 
     const statusByDate = new Map(
       collections.map((row) => [
-        String(row.data_ref).slice(0, 10),
+        isoDate(row.data_ref),
         row.status,
       ]),
     )
@@ -76,4 +76,20 @@ export default async function handler(req, res) {
       message: publicWmsTaskFailureMessage(error),
     })
   }
+}
+
+
+function isoDate(value) {
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10)
+  }
+
+  const text = String(value || '').trim()
+  const direct = text.match(/^\d{4}-\d{2}-\d{2}/)
+  if (direct) return direct[0]
+
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime())
+    ? text.slice(0, 10)
+    : parsed.toISOString().slice(0, 10)
 }
