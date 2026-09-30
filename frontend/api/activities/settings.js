@@ -1,5 +1,6 @@
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
+import { logAdminAction } from '../_lib/remuneration-admin.js'
 import {
   ensureActivitiesSchema,
   listActivityConfigs,
@@ -87,6 +88,14 @@ export default async function handler(req, res) {
           WHERE atividade_chave = ${chave}
         `
 
+        await logAdminAction(admin, {
+          action: 'alterar_valor_atividade',
+          entity: 'atividade_catalogo',
+          entityId: chave,
+          description: `Valor da atividade ${rows[0].nome} alterado para R$ ${valor.toFixed(2)} para todos os ajudantes.`,
+          after: { valor_unitario: valor, escopo: 'todos' },
+        })
+
         return res.status(200).json({
           status: 'ok',
           message: 'Valor atualizado para todos os ajudantes.',
@@ -142,6 +151,14 @@ export default async function handler(req, res) {
               atualizado_em = NOW()
           `
         }
+
+        await logAdminAction(admin, {
+          action: 'alterar_valor_atividade',
+          entity: 'atividade_valor_usuario',
+          entityId: chave,
+          description: `Valor personalizado da atividade ${chave} alterado para R$ ${valor.toFixed(2)} em ${usuariosIds.length} ajudante(s).`,
+          after: { valor_unitario: valor, escopo: 'selecionados', usuarios_ids: usuariosIds },
+        })
 
         return res.status(200).json({
           status: 'ok',
