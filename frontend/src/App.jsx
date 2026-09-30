@@ -13,6 +13,7 @@ import WalletScreen from './components/WalletScreen.jsx'
 import WalletCapsScreen from './components/WalletCapsScreen.jsx'
 import HighlightsScreen from './components/HighlightsScreen.jsx'
 import ChangePasswordScreen from './components/ChangePasswordScreen.jsx'
+import RemunerationAdminScreen from './components/RemunerationAdminScreen.jsx'
 import './components/DashboardHighlights.css'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
@@ -1293,6 +1294,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   const [unreadActivities, setUnreadActivities] = useState(0)
   const [activityNotifications, setActivityNotifications] = useState([])
   const [myStars, setMyStars] = useState(0)
+  const [integrationAlertCount, setIntegrationAlertCount] = useState(0)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false)
   const notificationRef = useRef(null)
@@ -1311,6 +1313,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     ...(isAdmin ? [{ id: 'aprovar-atividades', label: 'Aprovar atividades', icon: 'atividades' }] : []),
     ...(isAdmin ? [{ id: 'valores-atividades', label: 'Valores das atividades', icon: 'configuracoes' }] : []),
     ...(isAdmin ? [{ id: 'tetos-carteira', label: 'Tetos da carteira', icon: 'carteira' }] : []),
+    ...(isAdmin ? [{ id: 'gestao-remuneracao', label: integrationAlertCount > 0 ? `Gestão remuneração (${integrationAlertCount})` : 'Gestão remuneração', icon: 'relatorios' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     { id: 'alterar-senha', label: 'Alterar senha', icon: 'configuracoes' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
@@ -1322,11 +1325,12 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 
     async function refreshUnread() {
       try {
-        const [newsData, escalonadaData, activitiesData, highlightsData] = await Promise.all([
+        const [newsData, escalonadaData, activitiesData, highlightsData, remunerationAlerts] = await Promise.all([
           api.get('/api/news'),
           api.get('/api/escalonada'),
           canUseActivities ? api.get('/api/activities/notifications') : Promise.resolve({ nao_lidas: 0, notificacoes: [] }),
           api.get('/api/highlights'),
+          isAdmin ? api.get('/api/admin/remuneration?mode=alerts') : Promise.resolve({ total_pendencias: 0 }),
         ])
         if (active) {
           setUnreadNews(Number(newsData.nao_lidas || 0))
@@ -1336,6 +1340,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
           setUnreadActivities(Number(activitiesData.nao_lidas || 0))
           setActivityNotifications((activitiesData.notificacoes || []).slice(0, 6))
           setMyStars(Number(highlightsData.minhas_estrelas || 0))
+          setIntegrationAlertCount(Number(remunerationAlerts.total_pendencias || 0))
         }
       } catch {
         // A ausência temporária do feed não bloqueia a navegação.
@@ -1391,6 +1396,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     'aprovar-atividades': { title: 'Aprovar atividades', description: 'Fila central para revisar, editar, aprovar ou reprovar lançamentos.', icon: 'atividades' },
     'valores-atividades': { title: 'Valores das atividades', description: 'Configuração dos valores unitários das atividades.', icon: 'configuracoes' },
     'tetos-carteira': { title: 'Tetos da carteira', description: 'Limite mensal individual dos ajudantes.', icon: 'carteira' },
+    'gestao-remuneracao': { title: 'Gestão remuneração', description: 'Painel, fechamento, integrações e auditoria.', icon: 'relatorios' },
     'alterar-senha': { title: 'Alterar senha', description: 'Atualize sua senha de acesso com segurança.', icon: 'configuracoes' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
@@ -1743,6 +1749,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <WalletCapsScreen />
           ) : activeSection === 'carteira' && canUseWallet ? (
             <WalletScreen />
+          ) : activeSection === 'gestao-remuneracao' && isAdmin ? (
+            <RemunerationAdminScreen />
           ) : activeSection === 'destaques' ? (
             <HighlightsScreen />
           ) : activeSection === 'gerenciar-destaques' && isAdmin ? (
