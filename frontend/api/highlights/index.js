@@ -14,6 +14,7 @@ async function ensureSchema() {
       data_inicio DATE NOT NULL,
       data_fim DATE NOT NULL,
       motivo TEXT NOT NULL,
+      exibir_painel BOOLEAN NOT NULL DEFAULT FALSE,
       criado_por_id BIGINT NOT NULL,
       criado_por_nome VARCHAR(180) NOT NULL,
       criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -21,6 +22,11 @@ async function ensureSchema() {
       UNIQUE (funcao, periodo_tipo, data_inicio, data_fim)
     )
   `
+  await sql`
+    ALTER TABLE operacao_destaques
+    ADD COLUMN IF NOT EXISTS exibir_painel BOOLEAN NOT NULL DEFAULT FALSE
+  `
+
   await sql`
     CREATE INDEX IF NOT EXISTS idx_operacao_destaques_usuario
     ON operacao_destaques(usuario_id, data_inicio DESC)
@@ -46,6 +52,7 @@ export default async function handler(req, res) {
           d.data_inicio,
           d.data_fim,
           d.motivo,
+          d.exibir_painel,
           d.criado_em,
           u.nome,
           u.foto_perfil,
@@ -97,6 +104,9 @@ export default async function handler(req, res) {
         funcoes: FUNCTIONS,
         destaques: destaques.map(serializeHighlight),
         minhas_estrelas: myRows.length,
+        destaques_painel: destaques
+          .filter((row) => Boolean(row.exibir_painel))
+          .map(serializeHighlight),
         meus_destaques: myRows.map((row) => ({
           id: Number(row.id),
           funcao: row.funcao,
@@ -117,6 +127,47 @@ export default async function handler(req, res) {
 
       const action = String(req.body?.action || 'save').trim().toLowerCase()
 
+      if (action === 'toggle_dashboard') {
+        const id = Number(req.body?.id || 0)
+        const visible = Boolean(req.body?.exibir_painel)
+        if (!Number.isInteger(id) || id <= 0) {
+          return res.status(400).json({ status: 'error', message: 'Destaque inválido.' })
+        }
+
+        const targetRows = await sql`
+          SELECT id, funcao
+          FROM operacao_destaques
+          WHERE id = ${id}
+          LIMIT 1
+        `
+
+        if (!targetRows[0]) {
+          return res.status(404).json({ status: 'error', message: 'Destaque não encontrado.' })
+        }
+
+        if (visible) {
+          await sql`
+            UPDATE operacao_destaques
+            SET exibir_painel = FALSE,
+                atualizado_em = NOW()
+            WHERE funcao = ${targetRows[0].funcao}
+              AND id <> ${id}
+          `
+        }
+
+        await sql`
+          UPDATE operacao_destaques
+          SET exibir_painel = ${visible},
+              atualizado_em = NOW()
+          WHERE id = ${id}
+        `
+
+        return res.status(200).json({
+          status: 'ok',
+          message: visible ? 'Destaque exibido no painel.' : 'Destaque removido do painel.',
+        })
+      }
+
       if (action === 'delete') {
         const id = Number(req.body?.id || 0)
         if (!Number.isInteger(id) || id <= 0) {
@@ -131,6 +182,7 @@ export default async function handler(req, res) {
       const periodoTipo = String(req.body?.periodo_tipo || '').trim().toLowerCase()
       const dataBase = String(req.body?.data_base || '').trim()
       const motivo = String(req.body?.motivo || '').trim()
+      const exibirPainel = Boolean(req.body?.exibir_painel)
 
       if (!Number.isInteger(usuarioId) || usuarioId <= 0) {
         return res.status(400).json({ status: 'error', message: 'Selecione um colaborador.' })
@@ -167,19 +219,29 @@ export default async function handler(req, res) {
 
       const { start, end } = resolvePeriod(periodoTipo, dataBase)
 
+      if (exibirPainel) {
+        await sql`
+          UPDATE operacao_destaques
+          SET exibir_painel = FALSE,
+              atualizado_em = NOW()
+          WHERE funcao = ${funcao}
+        `
+      }
+
       await sql`
         INSERT INTO operacao_destaques (
           usuario_id, funcao, periodo_tipo, data_inicio, data_fim,
-          motivo, criado_por_id, criado_por_nome, atualizado_em
+          motivo, exibir_painel, criado_por_id, criado_por_nome, atualizado_em
         )
         VALUES (
           ${usuarioId}, ${funcao}, ${periodoTipo}, ${start}, ${end},
-          ${motivo}, ${currentUser.id}, ${currentUser.nome}, NOW()
+          ${motivo}, ${exibirPainel}, ${currentUser.id}, ${currentUser.nome}, NOW()
         )
         ON CONFLICT (funcao, periodo_tipo, data_inicio, data_fim)
         DO UPDATE SET
           usuario_id = EXCLUDED.usuario_id,
           motivo = EXCLUDED.motivo,
+          exibir_painel = EXCLUDED.exibir_painel,
           criado_por_id = EXCLUDED.criado_por_id,
           criado_por_nome = EXCLUDED.criado_por_nome,
           atualizado_em = NOW()
@@ -247,6 +309,7 @@ function serializeHighlight(row) {
     data_inicio: row.data_inicio,
     data_fim: row.data_fim,
     motivo: row.motivo,
+    exibir_painel: Boolean(row.exibir_painel),
     criado_em: row.criado_em,
     nome: row.nome,
     foto_perfil: row.foto_perfil || null,
