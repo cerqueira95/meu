@@ -276,6 +276,52 @@ export async function getWalletData(userId, month) {
         },
       }
     }
+
+    const userRows = await sql`
+      SELECT id, nome, turno, cargo, perfil
+      FROM usuarios
+      WHERE id = ${userId}
+      LIMIT 1
+    `
+    const user = userRows[0]
+    if (!user) {
+      const error = new Error('USER_NOT_FOUND')
+      error.code = 'USER_NOT_FOUND'
+      throw error
+    }
+
+    return {
+      status: 'ok',
+      mes: normalized,
+      usuario: {
+        id: Number(user.id),
+        nome: user.nome,
+        turno: user.turno || '',
+        cargo: user.cargo || '',
+        perfil: user.perfil || '',
+      },
+      teto: {
+        possui: false,
+        valor: null,
+        atingido: false,
+        restante: null,
+      },
+      totais: {
+        valor_wms: 0,
+        tarefas_wms: 0,
+        escalonada: 0,
+        atividades: 0,
+        bruto: 0,
+        saldo: 0,
+        bloqueado_teto: 0,
+      },
+      extrato: [],
+      fechamento: {
+        status: 'fechado',
+        fechado_em: closure.fechado_em,
+        fechado_por_nome: closure.fechado_por_nome,
+      },
+    }
   }
 
   const live = await buildLiveWalletData(userId, normalized)
