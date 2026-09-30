@@ -2,6 +2,7 @@ const WMS_ORIGIN = 'https://wmst2.ambev.com.br'
 const LOGIN_PATH = '/wms/new/security/authentication/login-novo'
 const RATEIO_PATH = '/api/variable-pay/relatorios/rateio'
 const ITEM_REPORT_PATH = '/wms/api-gateway/separacao/tempo-separacao/item-separado'
+const TASKS_PATH = '/api/task-management/v2/work-tasks:paginated'
 
 export function currentBahiaDate() {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -134,6 +135,86 @@ export async function fetchWmsItemReport(token, date = currentBahiaDate()) {
       duracaoSeg: durationToSeconds(item.esforco),
       usuarioLogin: textOrNull(item.usuario),
       usuarioNome: null,
+    })),
+  }
+}
+
+export async function fetchWmsTasks(token, date = currentBahiaDate()) {
+  const itemsByPage = 100
+  const first = await fetchWmsTasksPage(token, date, 1, itemsByPage)
+  const rows = [...first.rows]
+  const totalItems = Number(first.payload?.totalItems || rows.length)
+  const totalPages = Math.max(
+    1,
+    Number(first.payload?.totalPages || Math.ceil(totalItems / itemsByPage) || 1),
+  )
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const current = await fetchWmsTasksPage(token, date, page, itemsByPage)
+    rows.push(...current.rows)
+  }
+
+  return {
+    source: first.url,
+    rows,
+  }
+}
+
+async function fetchWmsTasksPage(token, date, page, itemsByPage) {
+  const params = new URLSearchParams({
+    _Size: String(itemsByPage),
+    _Page: String(page),
+    _Order: 'CreatedDateInfo DESC',
+    startDate: `${date} 00:00:00`,
+    endDate: `${date} 23:59:59`,
+  })
+
+  const url = `${WMS_ORIGIN}${TASKS_PATH}?${params.toString()}`
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json, text/plain, */*',
+      Authorization: token,
+    },
+  })
+
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok || !payload || typeof payload !== 'object') {
+    const error = new Error(
+      payload?.message || 'Não foi possível buscar o Monitorar Tarefas do WMS.',
+    )
+    error.code = response.status === 401 ? 'WMS_TOKEN_REJECTED' : 'WMS_TASK_FAILED'
+    error.status = response.status
+    throw error
+  }
+
+  const data = Array.isArray(payload.data)
+    ? payload.data
+    : Array.isArray(payload.items)
+      ? payload.items
+      : []
+
+  return {
+    url,
+    payload,
+    rows: data.map((item) => ({
+      id: textOrNull(item.id),
+      documentNumber: textOrNull(item.documentNumber),
+      fromLocationCode: textOrNull(item.fromLocationCode),
+      locationCode: textOrNull(item.locationCode),
+      palletDescription: textOrNull(item.palletDescription),
+      status: textOrNull(item.status),
+      statusId: numberOrNull(item.statusId),
+      workType: textOrNull(item.workType),
+      userName: textOrNull(item.userName),
+      createdDateInfo: textOrNull(item.createdDateInfo),
+      lastAssociationDate: textOrNull(item.lastAssociationDate),
+      releaseDate: textOrNull(item.releaseDate),
+      updatedDate: textOrNull(item.updatedDate),
+      truckPlate: textOrNull(item.truckPlate),
+      trailerPlate: textOrNull(item.trailerPlate),
+      sequenceId: textOrNull(item.sequenceId),
+      priority: textOrNull(item.priority),
     })),
   }
 }
