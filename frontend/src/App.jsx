@@ -1298,7 +1298,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 
   const isAdmin = String(usuario.perfil || '').toUpperCase() === 'ADM'
   const canUseActivities = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase())
-  const canUseWallet = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase()) ||\n    String(usuario.cargo || '').trim().toUpperCase() === 'EMPILHADEIRA'
+  const canUseWallet = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase()) ||
+    String(usuario.cargo || '').trim().toUpperCase() === 'EMPILHADEIRA'
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
     { id: 'news', label: 'Armazém New', icon: 'news' },
