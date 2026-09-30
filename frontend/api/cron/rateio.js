@@ -7,7 +7,10 @@ import {
 
 // IMPORTANTE PARA MANUTENÇÃO:
 // Este endpoint é chamado por automação externa. Ele deve permanecer idempotente:
-// várias chamadas no mesmo dia não podem duplicar uma coleta que já terminou com status "ok".
+// várias chamadas normais no mesmo dia não podem duplicar uma coleta já concluída.
+// O parâmetro ?fechamento=1 força uma nova leitura do mesmo dia para atualizar
+// o fechamento noturno. A rotina de persistência substitui os registros daquele dia,
+// então a recoleta atualiza valores e não soma/duplica lançamentos.
 // A autenticação é feita pelo header "Authorization: Bearer <CRON_SECRET>".
 // Nunca grave o valor real de CRON_SECRET neste arquivo ou em documentação versionada.
 export default async function handler(req, res) {
@@ -32,9 +35,13 @@ export default async function handler(req, res) {
   try {
     // A data de referência é sempre a data local da Bahia, evitando divergência com UTC.
     const date = currentBahiaDate()
+    const fechamento = ['1', 'true', 'sim'].includes(
+      String(req.query?.fechamento || '').trim().toLowerCase(),
+    )
 
     // Antes de coletar novamente, verificamos as duas partes que compõem a coleta diária.
-    // Só pulamos quando AMBAS já concluíram com sucesso.
+    // Na execução normal, só coletamos se o dia ainda não estiver concluído.
+    // No fechamento noturno, ignoramos esse atalho e consultamos o WMS outra vez.
     const [rateio, item] = await Promise.all([
       sql`
         SELECT status
@@ -50,23 +57,29 @@ export default async function handler(req, res) {
       `,
     ])
 
-    if (rateio[0]?.status === 'ok' && item[0]?.status === 'ok') {
+    if (
+      !fechamento &&
+      rateio[0]?.status === 'ok' &&
+      item[0]?.status === 'ok'
+    ) {
       return res.status(200).json({
         status: 'ok',
         skipped: true,
+        fechamento: false,
         date,
         message: 'Coleta de hoje já concluída.',
       })
     }
 
-    // Se a coleta do dia ainda não estiver completa, executa a sincronização real do WMS.
-    // A tentativa de segurança (ex.: 08:02) pode chamar este mesmo endpoint sem duplicar
-    // uma coleta que já tenha sido finalizada pela tentativa principal.
+    // collectCurrentRateio() grava novamente a fotografia atual do dia.
+    // wms_rateio_registros e wms_item_registros daquele dia são substituídos,
+    // portanto novas produções entram e registros antigos não são duplicados.
     const result = await collectCurrentRateio()
 
     return res.status(200).json({
       status: 'ok',
       skipped: false,
+      fechamento,
       ...result,
     })
   } catch (error) {
