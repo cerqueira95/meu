@@ -1,5 +1,6 @@
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
+import { logAdminAction } from '../_lib/remuneration-admin.js'
 
 const FUNCTIONS = ['Operador', 'Ajudante', 'Conferente', 'Manobrista']
 const PERIODS = new Set(['dia', 'semana', 'mes'])
@@ -162,6 +163,14 @@ export default async function handler(req, res) {
           WHERE id = ${id}
         `
 
+        await logAdminAction(currentUser, {
+          action: 'alterar_destaque_painel',
+          entity: 'operacao_destaque',
+          entityId: id,
+          description: visible ? 'Destaque marcado para exibição no painel.' : 'Destaque removido da exibição no painel.',
+          after: { exibir_painel: visible },
+        })
+
         return res.status(200).json({
           status: 'ok',
           message: visible ? 'Destaque exibido no painel.' : 'Destaque removido do painel.',
@@ -174,6 +183,12 @@ export default async function handler(req, res) {
           return res.status(400).json({ status: 'error', message: 'Destaque inválido.' })
         }
         await sql`DELETE FROM operacao_destaques WHERE id = ${id}`
+        await logAdminAction(currentUser, {
+          action: 'excluir_destaque',
+          entity: 'operacao_destaque',
+          entityId: id,
+          description: `Destaque #${id} removido.`,
+        })
         return res.status(200).json({ status: 'ok', message: 'Destaque removido.' })
       }
 
@@ -246,6 +261,14 @@ export default async function handler(req, res) {
           criado_por_nome = EXCLUDED.criado_por_nome,
           atualizado_em = NOW()
       `
+
+      await logAdminAction(currentUser, {
+        action: 'salvar_destaque',
+        entity: 'operacao_destaque',
+        entityId: `${funcao}:${periodoTipo}:${start}`,
+        description: `${target.nome} foi definido como destaque de ${funcao}.`,
+        after: { usuario_id: usuarioId, funcao, periodo_tipo: periodoTipo, data_inicio: start, data_fim: end, exibir_painel: exibirPainel },
+      })
 
       return res.status(200).json({
         status: 'ok',
