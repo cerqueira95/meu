@@ -5078,3 +5078,219 @@ form {
   .users-default-password-action{grid-template-columns:1fr}
   .users-default-password-action button{min-height:42px}
 }
+
+
+/* Solicitação de acesso */
+.login-access-request-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #155eef;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.login-access-request-link:hover {
+  text-decoration: underline;
+}
+
+.access-request-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(8, 17, 27, 0.64);
+  backdrop-filter: blur(5px);
+}
+
+.access-request-modal {
+  width: min(520px, 100%);
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(7, 17, 28, 0.28);
+}
+
+.access-request-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 22px 16px;
+  border-bottom: 1px solid #eceff2;
+}
+
+.access-request-head h3 {
+  margin: 6px 0 5px;
+  color: #1c2b3e;
+  font-size: 24px;
+}
+
+.access-request-head p {
+  margin: 0;
+  color: #7f8a97;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.access-request-head > button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  background: #f3f5f7;
+  color: #8e98a5;
+  font-size: 20px;
+}
+
+.access-request-form {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px 22px;
+}
+
+.access-request-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.access-request-form label > span {
+  color: #35445a;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.access-request-form input,
+.access-request-form select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #dfe5eb;
+  border-radius: 11px;
+  padding: 0 12px;
+  outline: 0;
+  color: #253448;
+  background: #fff;
+}
+
+.access-request-form input:focus,
+.access-request-form select:focus {
+  border-color: #ffb000;
+  box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.1);
+}
+
+.access-request-success {
+  padding: 11px 13px;
+  border: 1px solid #abefc6;
+  border-radius: 10px;
+  background: #ecfdf3;
+  color: #027a48;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.access-requests-admin {
+  overflow: hidden;
+  border: 1px solid #dfe6ee;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.access-requests-admin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 17px 18px;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.access-requests-admin-head h2 {
+  margin: 5px 0 3px;
+  color: #1f3046;
+  font-size: 18px;
+}
+
+.access-requests-admin-head p {
+  margin: 0;
+  color: #8b96a4;
+  font-size: 10px;
+}
+
+.access-requests-admin-head > strong {
+  min-width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff3d6;
+  color: #8a5d00;
+}
+
+.access-requests-admin-list {
+  display: grid;
+}
+
+.access-requests-admin-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 18px;
+  border-top: 1px solid #f2f4f7;
+}
+
+.access-requests-admin-list article:first-child {
+  border-top: 0;
+}
+
+.access-requests-admin-list article > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.access-requests-admin-list article strong {
+  color: #28384d;
+  font-size: 11px;
+}
+
+.access-requests-admin-list article span {
+  color: #8b96a4;
+  font-size: 9px;
+}
+
+.access-request-admin-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.access-request-admin-actions button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #dfe5eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #536174;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.access-request-admin-actions button.danger {
+  color: #a04444;
+}
+
+@media (max-width: 620px) {
+  .access-requests-admin-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .access-request-admin-actions {
+    width: 100%;
+  }
+
+  .access-request-admin-actions button {
+    flex: 1;
+  }
+}
