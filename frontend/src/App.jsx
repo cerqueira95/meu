@@ -784,6 +784,8 @@ function UsersScreen({ currentUser }) {
   const [deletingId, setDeletingId] = useState(0)
   const [selectedUserIds, setSelectedUserIds] = useState([])
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [accessRequests, setAccessRequests] = useState([])
+  const [selectedAccessRequestId, setSelectedAccessRequestId] = useState(0)
 
   const profiles = ['ADM', 'Operador', 'Ajudante', 'Conferente']
 
@@ -796,8 +798,12 @@ function UsersScreen({ currentUser }) {
     setError('')
 
     try {
-      const data = await api.get('/api/users')
+      const [data, requestData] = await Promise.all([
+        api.get('/api/users'),
+        api.get('/api/access-requests'),
+      ])
       setUsuarios(data.usuarios || [])
+      setAccessRequests(requestData.solicitacoes || [])
       setSelectedUserIds((current) => current.filter((id) => (data.usuarios || []).some((user) => Number(user.id) === Number(id))))
     } catch (requestError) {
       setError(requestError.message)
@@ -808,6 +814,7 @@ function UsersScreen({ currentUser }) {
 
   function openNew() {
     setEditing(null)
+    setSelectedAccessRequestId(0)
     setForm(emptyForm)
     setError('')
     setSuccess('')
@@ -816,6 +823,7 @@ function UsersScreen({ currentUser }) {
 
   function openEdit(user) {
     setEditing(user)
+    setSelectedAccessRequestId(0)
     setForm({
       nome: user.nome || '',
       cpf: formatCpf(user.cpf || ''),
@@ -837,7 +845,45 @@ function UsersScreen({ currentUser }) {
     if (saving) return
     setModalOpen(false)
     setEditing(null)
+    setSelectedAccessRequestId(0)
     setForm(emptyForm)
+  }
+
+  function openAccessRequest(request) {
+    const funcao = String(request.funcao || '')
+    const normalized = funcao.toUpperCase()
+    const perfil = ['OPERADOR', 'AJUDANTE', 'CONFERENTE'].includes(normalized)
+      ? normalized.charAt(0) + normalized.slice(1).toLowerCase()
+      : 'Operador'
+
+    setEditing(null)
+    setSelectedAccessRequestId(Number(request.id))
+    setForm({
+      ...emptyForm,
+      cpf: formatCpf(request.cpf || ''),
+      turno: request.turno || '',
+      cargo: funcao,
+      perfil,
+    })
+    setError('')
+    setSuccess('')
+    setModalOpen(true)
+  }
+
+  async function discardAccessRequest(request) {
+    if (!window.confirm('Descartar esta solicitação de acesso?')) return
+    setError('')
+    setSuccess('')
+    try {
+      const result = await api.patch('/api/access-requests', {
+        id: request.id,
+        status: 'descartado',
+      })
+      setSuccess(result.message)
+      await loadUsers()
+    } catch (requestError) {
+      setError(requestError.message)
+    }
   }
 
   function updateForm(field, value) {
@@ -876,8 +922,16 @@ function UsersScreen({ currentUser }) {
         ? await api.post('/api/users/update', { ...payload, id: editing.id })
         : await api.post('/api/users', payload)
 
+      if (!editing && selectedAccessRequestId) {
+        await api.patch('/api/access-requests', {
+          id: selectedAccessRequestId,
+          status: 'atendido',
+        })
+      }
+
       setSuccess(data.message)
       setModalOpen(false)
+      setSelectedAccessRequestId(0)
       await loadUsers()
     } catch (requestError) {
       setError(requestError.message)
@@ -1072,6 +1126,33 @@ function UsersScreen({ currentUser }) {
           <small>perfil geral do sistema</small>
         </article>
       </div>
+
+      {accessRequests.some((item) => item.status === 'pendente') && (
+        <section className="access-requests-admin">
+          <div className="access-requests-admin-head">
+            <div>
+              <span className="dashboard-kicker">SOLICITAÇÕES DE ACESSO</span>
+              <h2>Aguardando cadastro</h2>
+              <p>Funcionários que solicitaram acesso pela tela inicial.</p>
+            </div>
+            <strong>{accessRequests.filter((item) => item.status === 'pendente').length}</strong>
+          </div>
+          <div className="access-requests-admin-list">
+            {accessRequests.filter((item) => item.status === 'pendente').map((request) => (
+              <article key={request.id}>
+                <div>
+                  <strong>{formatCpf(request.cpf)}</strong>
+                  <span>{request.turno} • {request.funcao}</span>
+                </div>
+                <div className="access-request-admin-actions">
+                  <button type="button" onClick={() => openAccessRequest(request)}>Cadastrar</button>
+                  <button type="button" className="danger" onClick={() => discardAccessRequest(request)}>Descartar</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="users-default-password">
         <div>
