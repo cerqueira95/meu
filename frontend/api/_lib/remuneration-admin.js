@@ -685,6 +685,16 @@ function addCollectionAlert(alerts, label, row, date) {
       title: `${label} com erro`,
       message: row.erro || `A coleta de ${date} não terminou com sucesso.`,
     })
+    return
+  }
+
+  if (Number(row.total_registros || 0) === 0) {
+    alerts.push({
+      id: `${label}-zero`,
+      severity: 'warning',
+      title: `${label} retornou zero registros`,
+      message: `A coleta de ${date} terminou como OK, mas não trouxe registros. Vale conferir o WMS.`,
+    })
   }
 }
 
@@ -705,6 +715,16 @@ function addTaskCollectionAlert(alerts, row, date) {
       severity: 'error',
       title: 'Monitorar Tarefas com erro',
       message: row.mensagem || `A coleta de ${date} não terminou com sucesso.`,
+    })
+    return
+  }
+
+  if (Number(row.total_completo || 0) === 0) {
+    alerts.push({
+      id: 'tarefas-zero',
+      severity: 'warning',
+      title: 'Monitorar Tarefas retornou zero completas',
+      message: `A coleta de ${date} terminou como OK, mas nenhuma tarefa completa foi encontrada.`,
     })
   }
 }
