@@ -1,7 +1,19 @@
 import { sql } from './db.js'
 import { currentBahiaDate } from './activities.js'
 
-export async function ensureWalletSchema() {
+let walletSchemaPromise = null
+
+export function ensureWalletSchema() {
+  if (!walletSchemaPromise) {
+    walletSchemaPromise = createWalletSchema().catch((error) => {
+      walletSchemaPromise = null
+      throw error
+    })
+  }
+  return walletSchemaPromise
+}
+
+async function createWalletSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS remuneracao_tetos (
       usuario_id BIGINT PRIMARY KEY,
