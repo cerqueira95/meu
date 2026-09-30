@@ -14,6 +14,7 @@ import WalletCapsScreen from './components/WalletCapsScreen.jsx'
 import HighlightsScreen from './components/HighlightsScreen.jsx'
 import ChangePasswordScreen from './components/ChangePasswordScreen.jsx'
 import RemunerationAdminScreen from './components/RemunerationAdminScreen.jsx'
+import OperatorTasksScreen from './components/OperatorTasksScreen.jsx'
 import './components/DashboardHighlights.css'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
@@ -97,6 +98,10 @@ function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [quickAccess, setQuickAccess] = useState(() => readQuickAccess())
+  const [accessRequestOpen, setAccessRequestOpen] = useState(false)
+  const [accessRequest, setAccessRequest] = useState({ cpf: '', turno: '', funcao: '' })
+  const [accessRequestLoading, setAccessRequestLoading] = useState(false)
+  const [accessRequestMessage, setAccessRequestMessage] = useState('')
 
   const cpfValido = useMemo(() => onlyDigits(cpf).length === 11, [cpf])
 
@@ -132,6 +137,33 @@ function LoginScreen({ onLogin }) {
       setError(requestError.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function submitAccessRequest(event) {
+    event.preventDefault()
+    setError('')
+    setAccessRequestMessage('')
+
+    const requestCpf = onlyDigits(accessRequest.cpf)
+    if (requestCpf.length !== 11 || !accessRequest.turno || !accessRequest.funcao) {
+      setError('Preencha CPF, turno e função para solicitar seu acesso.')
+      return
+    }
+
+    setAccessRequestLoading(true)
+    try {
+      const result = await api.post('/api/access-requests', {
+        cpf: requestCpf,
+        turno: accessRequest.turno,
+        funcao: accessRequest.funcao,
+      })
+      setAccessRequestMessage(result.message)
+      setAccessRequest({ cpf: '', turno: '', funcao: '' })
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setAccessRequestLoading(false)
     }
   }
 
@@ -354,10 +386,85 @@ function LoginScreen({ onLogin }) {
           <div className="login-support">
             <span className="support-dot" />
             <p>
-              Problemas para acessar? <strong>Procure seu responsável.</strong>
+              Sem acesso?{' '}
+              <button
+                className="login-access-request-link"
+                type="button"
+                onClick={() => {
+                  setError('')
+                  setAccessRequestMessage('')
+                  setAccessRequestOpen(true)
+                }}
+              >
+                Solicite aqui
+              </button>
             </p>
           </div>
         </div>
+
+        {accessRequestOpen && (
+          <div className="access-request-backdrop" role="dialog" aria-modal="true">
+            <div className="access-request-modal">
+              <div className="access-request-head">
+                <div>
+                  <span className="eyebrow">SOLICITAÇÃO DE ACESSO</span>
+                  <h3>Primeiro acesso</h3>
+                  <p>Informe seus dados para a liderança liberar seu cadastro.</p>
+                </div>
+                <button type="button" onClick={() => setAccessRequestOpen(false)}>×</button>
+              </div>
+
+              <form className="access-request-form" onSubmit={submitAccessRequest}>
+                <label>
+                  <span>CPF</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={accessRequest.cpf}
+                    onChange={(event) => setAccessRequest((current) => ({ ...current, cpf: formatCpf(event.target.value) }))}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                  />
+                </label>
+                <label>
+                  <span>Turno</span>
+                  <select
+                    value={accessRequest.turno}
+                    onChange={(event) => setAccessRequest((current) => ({ ...current, turno: event.target.value }))}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="A">Turno A</option>
+                    <option value="B">Turno B</option>
+                    <option value="C">Turno C</option>
+                    <option value="Administrativo">Administrativo</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Função</span>
+                  <select
+                    value={accessRequest.funcao}
+                    onChange={(event) => setAccessRequest((current) => ({ ...current, funcao: event.target.value }))}
+                  >
+                    <option value="">Selecione</option>
+                    <option value="Operador">Operador</option>
+                    <option value="Ajudante">Ajudante</option>
+                    <option value="Conferente">Conferente</option>
+                    <option value="Empilhadeira">Empilhadeira</option>
+                    <option value="Manobrista">Manobrista</option>
+                  </select>
+                </label>
+
+                {error && <div className="login-error"><span>!</span>{error}</div>}
+                {accessRequestMessage && <div className="access-request-success">{accessRequestMessage}</div>}
+
+                <button className="login-button" type="submit" disabled={accessRequestLoading}>
+                  <span>{accessRequestLoading ? 'Enviando...' : 'Solicitar acesso'}</span>
+                  {!accessRequestLoading && <span aria-hidden="true">→</span>}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         <footer className="login-footer">
           <span>Ambiente interno</span>
@@ -1314,6 +1421,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     ...(isAdmin ? [{ id: 'valores-atividades', label: 'Valores das atividades', icon: 'configuracoes' }] : []),
     ...(isAdmin ? [{ id: 'tetos-carteira', label: 'Tetos da carteira', icon: 'carteira' }] : []),
     ...(isAdmin ? [{ id: 'gestao-remuneracao', label: integrationAlertCount > 0 ? `Gestão remuneração (${integrationAlertCount})` : 'Gestão remuneração', icon: 'relatorios' }] : []),
+    ...(isAdmin ? [{ id: 'tarefas-operadores', label: 'Tarefas operadores', icon: 'relatorios' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     { id: 'alterar-senha', label: 'Alterar senha', icon: 'configuracoes' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
@@ -1397,6 +1505,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     'valores-atividades': { title: 'Valores das atividades', description: 'Configuração dos valores unitários das atividades.', icon: 'configuracoes' },
     'tetos-carteira': { title: 'Tetos da carteira', description: 'Limite mensal individual dos ajudantes.', icon: 'carteira' },
     'gestao-remuneracao': { title: 'Gestão remuneração', description: 'Painel, fechamento, integrações e auditoria.', icon: 'relatorios' },
+    'tarefas-operadores': { title: 'Tarefas operadores', description: 'Consulta e atualização manual das tarefas concluídas dos operadores.', icon: 'relatorios' },
     'alterar-senha': { title: 'Alterar senha', description: 'Atualize sua senha de acesso com segurança.', icon: 'configuracoes' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
@@ -1751,6 +1860,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <WalletScreen />
           ) : activeSection === 'gestao-remuneracao' && isAdmin ? (
             <RemunerationAdminScreen />
+          ) : activeSection === 'tarefas-operadores' && isAdmin ? (
+            <OperatorTasksScreen />
           ) : activeSection === 'destaques' ? (
             <HighlightsScreen />
           ) : activeSection === 'gerenciar-destaques' && isAdmin ? (
