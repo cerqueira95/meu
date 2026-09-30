@@ -8,7 +8,7 @@ function money(value) {
 
 function formatDate(value) {
   if (!value) return ''
-  const date = new Date(value + 'T12:00:00')
+  const date = new Date(String(value).slice(0, 10) + 'T12:00:00')
   if (Number.isNaN(date.getTime())) return String(value)
   return new Intl.DateTimeFormat('pt-BR').format(date)
 }
@@ -30,8 +30,15 @@ export default function WalletScreen() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [expandedId, setExpandedId] = useState('')
+  const [details, setDetails] = useState({})
+  const [detailsLoading, setDetailsLoading] = useState('')
 
-  useEffect(() => { load(month) }, [month])
+  useEffect(() => {
+    setExpandedId('')
+    setDetails({})
+    load(month)
+  }, [month])
 
   async function load(targetMonth) {
     setLoading(true)
@@ -42,6 +49,33 @@ export default function WalletScreen() {
       setError(e.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function toggleTaskDetails(item) {
+    if (item.tipo !== 'wms_tarefa') return
+
+    if (expandedId === item.id) {
+      setExpandedId('')
+      return
+    }
+
+    setExpandedId(item.id)
+
+    if (details[item.id]) return
+
+    setDetailsLoading(item.id)
+    setError('')
+
+    try {
+      const result = await api.get(
+        `/api/wallet/task-details?data=${encodeURIComponent(String(item.data).slice(0, 10))}&chave=${encodeURIComponent(item.tarefa_chave)}`,
+      )
+      setDetails((current) => ({ ...current, [item.id]: result }))
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setDetailsLoading('')
     }
   }
 
@@ -63,6 +97,16 @@ export default function WalletScreen() {
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         </label>
       </div>
+
+      {data?.fechamento?.status === 'fechado' && (
+        <div className="wallet-closed-note">
+          <strong>Mês fechado</strong>
+          <span>
+            Os valores deste período estão congelados no fechamento
+            {data.fechamento.fechado_por_nome ? ` realizado por ${data.fechamento.fechado_por_nome}` : ''}.
+          </span>
+        </div>
+      )}
 
       {error && <div className="activity-message error">{error}</div>}
 
@@ -118,24 +162,83 @@ export default function WalletScreen() {
             </div>
 
             <div className="wallet-extract-list">
-              {(data.extrato || []).map((item) => (
-                <article key={item.id}>
-                  <div className={`wallet-entry-icon ${item.tipo}`}>
-                    {entryIcon(item)}
-                  </div>
-                  <div className="wallet-entry-copy">
-                    <strong>{item.titulo}</strong>
-                    <span>{item.detalhe}</span>
-                    <small>{formatDate(item.data)}</small>
-                  </div>
-                  <div className="wallet-entry-value">
-                    <strong>+ {money(item.valor_creditado)}</strong>
-                    {item.valor_bloqueado_teto > 0 && (
-                      <small>{money(item.valor_bloqueado_teto)} não creditado por teto</small>
+              {(data.extrato || []).map((item) => {
+                const detail = details[item.id]
+                const expanded = expandedId === item.id
+                return (
+                  <div className="wallet-entry-block" key={item.id}>
+                    <article className={item.tipo === 'wms_tarefa' ? 'wallet-entry-clickable' : ''}>
+                      <div className={`wallet-entry-icon ${item.tipo}`}>
+                        {entryIcon(item)}
+                      </div>
+                      <div className="wallet-entry-copy">
+                        <strong>{item.titulo}</strong>
+                        <span>{item.detalhe}</span>
+                        <small>{formatDate(item.data)}</small>
+                        {item.tipo === 'wms_tarefa' && (
+                          <button
+                            className="wallet-detail-button"
+                            type="button"
+                            onClick={() => toggleTaskDetails(item)}
+                          >
+                            {expanded ? 'Ocultar detalhes' : 'Ver detalhes das tarefas'}
+                          </button>
+                        )}
+                      </div>
+                      <div className="wallet-entry-value">
+                        <strong>+ {money(item.valor_creditado)}</strong>
+                        {item.valor_bloqueado_teto > 0 && (
+                          <small>{money(item.valor_bloqueado_teto)} não creditado por teto</small>
+                        )}
+                      </div>
+                    </article>
+
+                    {item.tipo === 'wms_tarefa' && expanded && (
+                      <div className="wallet-task-details">
+                        {detailsLoading === item.id ? (
+                          <span>Carregando detalhes...</span>
+                        ) : detail ? (
+                          <>
+                            <div className="wallet-task-summary">
+                              <span><strong>{detail.quantidade}</strong> tarefa(s)</span>
+                              <span><strong>{money(detail.valor_unitario)}</strong> por tarefa</span>
+                              <span><strong>{money(detail.total)}</strong> total</span>
+                            </div>
+                            <div className="wallet-task-table-wrap">
+                              <table className="wallet-task-table">
+                                <thead>
+                                  <tr>
+                                    <th>ID</th>
+                                    <th>Documento</th>
+                                    <th>Origem</th>
+                                    <th>Destino</th>
+                                    <th>Palete</th>
+                                    <th>Valor</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(detail.tarefas || []).map((task) => (
+                                    <tr key={task.id}>
+                                      <td>{task.id}</td>
+                                      <td>{task.documento || '-'}</td>
+                                      <td>{task.origem || '-'}</td>
+                                      <td>{task.destino || '-'}</td>
+                                      <td>{task.palete || '-'}</td>
+                                      <td>{money(task.valor)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        ) : (
+                          <span>Não foi possível carregar os detalhes.</span>
+                        )}
+                      </div>
                     )}
                   </div>
-                </article>
-              ))}
+                )
+              })}
               {!data.extrato?.length && <div className="wallet-empty">Nenhum valor encontrado neste mês.</div>}
             </div>
           </section>
