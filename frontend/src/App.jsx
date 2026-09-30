@@ -673,6 +673,8 @@ function UsersScreen({ currentUser }) {
   const [defaultPassword, setDefaultPassword] = useState('')
   const [bulkPasswordSaving, setBulkPasswordSaving] = useState(false)
   const [deletingId, setDeletingId] = useState(0)
+  const [selectedUserIds, setSelectedUserIds] = useState([])
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const profiles = ['ADM', 'Operador', 'Ajudante', 'Conferente']
 
@@ -687,6 +689,7 @@ function UsersScreen({ currentUser }) {
     try {
       const data = await api.get('/api/users')
       setUsuarios(data.usuarios || [])
+      setSelectedUserIds((current) => current.filter((id) => (data.usuarios || []).some((user) => Number(user.id) === Number(id))))
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -846,6 +849,72 @@ function UsersScreen({ currentUser }) {
     }
   }
 
+  function canDeleteUser(user) {
+    return Number(user.id) !== Number(currentUser.id) &&
+      String(user.perfil || '').toUpperCase() !== 'ADM'
+  }
+
+  function toggleUserSelection(userId) {
+    const id = Number(userId)
+    setSelectedUserIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    )
+  }
+
+  function toggleSelectAllVisible() {
+    const deletableIds = filteredUsers.filter(canDeleteUser).map((user) => Number(user.id))
+    const allSelected = deletableIds.length > 0 && deletableIds.every((id) => selectedUserIds.includes(id))
+
+    setSelectedUserIds((current) => {
+      if (allSelected) {
+        return current.filter((id) => !deletableIds.includes(id))
+      }
+      return [...new Set([...current, ...deletableIds])]
+    })
+  }
+
+  async function deleteSelectedUsers() {
+    const selectedUsers = usuarios.filter(
+      (user) => selectedUserIds.includes(Number(user.id)) && canDeleteUser(user),
+    )
+
+    if (selectedUsers.length === 0) {
+      setError('Selecione pelo menos um usuário que possa ser apagado.')
+      return
+    }
+
+    if (!window.confirm(`Apagar definitivamente ${selectedUsers.length} usuário(s) selecionado(s)? Esta ação não pode ser desfeita.`)) return
+
+    setBulkDeleting(true)
+    setError('')
+    setSuccess('')
+
+    let deleted = 0
+    const failures = []
+
+    for (const user of selectedUsers) {
+      try {
+        await api.post('/api/users/admin-actions', {
+          action: 'delete_user',
+          usuario_id: user.id,
+        })
+        deleted += 1
+      } catch (requestError) {
+        failures.push(`${user.nome}: ${requestError.message}`)
+      }
+    }
+
+    await loadUsers()
+    setBulkDeleting(false)
+
+    if (deleted > 0) {
+      setSuccess(`${deleted} usuário(s) excluído(s) com sucesso.`)
+    }
+    if (failures.length > 0) {
+      setError(`Não foi possível apagar ${failures.length} usuário(s): ${failures.join(' | ')}`)
+    }
+  }
+
   const filteredUsers = usuarios.filter((user) => {
     const text = search.trim().toLowerCase()
     const matchesText =
@@ -941,6 +1010,17 @@ function UsersScreen({ currentUser }) {
             <option value="ativo">Ativos</option>
             <option value="inativo">Inativos</option>
           </select>
+          {selectedUserIds.length > 0 && (
+            <button
+              type="button"
+              className="primary-action-button"
+              onClick={deleteSelectedUsers}
+              disabled={bulkDeleting}
+              style={{ background: '#b42318' }}
+            >
+              {bulkDeleting ? 'Apagando...' : `Apagar selecionados (${selectedUserIds.length})`}
+            </button>
+          )}
         </div>
 
         {error && <div className="users-message error">{error}</div>}
@@ -955,6 +1035,17 @@ function UsersScreen({ currentUser }) {
             <table className="users-table">
               <thead>
                 <tr>
+                  <th style={{ width: 44, textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      aria-label="Selecionar todos os usuários visíveis"
+                      checked={
+                        filteredUsers.filter(canDeleteUser).length > 0 &&
+                        filteredUsers.filter(canDeleteUser).every((user) => selectedUserIds.includes(Number(user.id)))
+                      }
+                      onChange={toggleSelectAllVisible}
+                    />
+                  </th>
                   <th>Funcionário</th>
                   <th>CPF / Matrícula</th>
                   <th>Cargo / Turno</th>
@@ -966,6 +1057,19 @@ function UsersScreen({ currentUser }) {
               <tbody>
                 {filteredUsers.map((user) => (
                   <tr key={user.id}>
+                    <td data-label="Selecionar" style={{ textAlign: 'center' }}>
+                      {canDeleteUser(user) ? (
+                        <input
+                          type="checkbox"
+                          aria-label={`Selecionar ${user.nome}`}
+                          checked={selectedUserIds.includes(Number(user.id))}
+                          onChange={() => toggleUserSelection(user.id)}
+                          disabled={bulkDeleting}
+                        />
+                      ) : (
+                        <span title="Administradores não podem ser apagados por esta ação">—</span>
+                      )}
+                    </td>
                     <td data-label="Funcionário">
                       <div className="table-user">
                         <UserAvatar
