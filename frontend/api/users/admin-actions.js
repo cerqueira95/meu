@@ -3,6 +3,7 @@ import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
 import { ensureActivitiesSchema } from '../_lib/activities.js'
 import { ensureWalletSchema } from '../_lib/wallet.js'
+import { logAdminAction } from '../_lib/remuneration-admin.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -47,6 +48,13 @@ export default async function handler(req, res) {
         WHERE usuario_id <> ${admin.id}
           AND revogado_em IS NULL
       `
+
+      await logAdminAction(admin, {
+        action: 'senha_padrao_em_massa',
+        entity: 'usuarios',
+        description: `Senha padrão redefinida para ${rows.length} usuário(s) ativo(s).`,
+        metadata: { atualizados: rows.length },
+      })
 
       return res.status(200).json({
         status: 'ok',
@@ -96,6 +104,14 @@ export default async function handler(req, res) {
       await sql`DELETE FROM remuneracao_tetos WHERE usuario_id = ${usuarioId}`
       await sql`DELETE FROM atividade_valores_usuario WHERE usuario_id = ${usuarioId}`
       await sql`DELETE FROM usuarios WHERE id = ${usuarioId}`
+
+      await logAdminAction(admin, {
+        action: 'excluir_usuario',
+        entity: 'usuario',
+        entityId: usuarioId,
+        description: `${target.nome} foi excluído do cadastro.`,
+        before: target,
+      })
 
       return res.status(200).json({
         status: 'ok',
