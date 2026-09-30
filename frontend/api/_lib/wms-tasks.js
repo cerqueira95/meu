@@ -29,7 +29,19 @@ export function normalizeWmsTaskKey(value) {
     .toUpperCase()
 }
 
-export async function ensureWmsTaskSchema() {
+let wmsTaskSchemaPromise = null
+
+export function ensureWmsTaskSchema() {
+  if (!wmsTaskSchemaPromise) {
+    wmsTaskSchemaPromise = createWmsTaskSchema().catch((error) => {
+      wmsTaskSchemaPromise = null
+      throw error
+    })
+  }
+  return wmsTaskSchemaPromise
+}
+
+async function createWmsTaskSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS wms_tarefa_valores (
       chave VARCHAR(220) PRIMARY KEY,
