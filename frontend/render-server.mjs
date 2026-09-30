@@ -20,6 +20,7 @@ const routes = new Map([
   ['/api/auth/logout', './api/auth/logout.js'],
   ['/api/auth/me', './api/auth/me.js'],
   ['/api/auth/quick-login', './api/auth/quick-login.js'],
+  ['/api/auth/change-password', './api/auth/change-password.js'],
   ['/api/users', './api/users/index.js'],
   ['/api/users/update', './api/users/update.js'],
   ['/api/users/admin-actions', './api/users/admin-actions.js'],
