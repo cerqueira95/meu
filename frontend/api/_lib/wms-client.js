@@ -169,6 +169,10 @@ async function fetchWmsTasksPage(token, date, page, itemsByPage) {
     endDate: `${date} 23:59:59`,
   })
 
+  // O frontend oficial usa Axios com arrayFormat "indices".
+  // Completed = 1 no próprio bundle do WMS.
+  params.set('statuses[0]', '1')
+
   const url = `${WMS_ORIGIN}${TASKS_PATH}?${params.toString()}`
   const response = await fetch(url, {
     headers: {
