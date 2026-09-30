@@ -1,4 +1,5 @@
 import { getSessionUser } from '../_lib/session.js'
+import { logAdminAction } from '../_lib/remuneration-admin.js'
 import {
   listWmsTaskConfigs,
   updateWmsTaskValue,
@@ -43,6 +44,14 @@ export default async function handler(req, res) {
           message: 'Tarefa WMS não encontrada.',
         })
       }
+
+      await logAdminAction(admin, {
+        action: 'alterar_valor_tarefa_wms',
+        entity: 'wms_tarefa_valor',
+        entityId: tarefa.chave,
+        description: `Valor da tarefa WMS ${tarefa.nome} alterado para R$ ${valor.toFixed(2)}.`,
+        after: { valor_unitario: valor },
+      })
 
       return res.status(200).json({
         status: 'ok',
