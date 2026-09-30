@@ -15,7 +15,10 @@ function normalizeInput(value) {
 
 export default function ActivityValuesScreen() {
   const [items, setItems] = useState([])
+  const [users, setUsers] = useState([])
   const [values, setValues] = useState({})
+  const [scope, setScope] = useState('todos')
+  const [selectedUsers, setSelectedUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState('')
   const [message, setMessage] = useState('')
@@ -33,6 +36,7 @@ export default function ActivityValuesScreen() {
       const data = await api.get('/api/activities/settings')
       const activities = data.atividades || []
       setItems(activities)
+      setUsers(data.usuarios || [])
       setValues(
         Object.fromEntries(
           activities.map((item) => [item.chave, String(Number(item.valor_unitario || 0).toFixed(2)).replace('.', ',')]),
@@ -45,12 +49,25 @@ export default function ActivityValuesScreen() {
     }
   }
 
+  function toggleUser(id) {
+    setSelectedUsers((current) =>
+      current.includes(id)
+        ? current.filter((userId) => userId !== id)
+        : [...current, id],
+    )
+  }
+
   async function save(item) {
     const raw = String(values[item.chave] || '').replace(',', '.')
     const amount = Number(raw)
 
     if (!Number.isFinite(amount) || amount < 0) {
       setError('Informe um valor válido.')
+      return
+    }
+
+    if (scope === 'selecionados' && selectedUsers.length === 0) {
+      setError('Selecione pelo menos um ajudante.')
       return
     }
 
@@ -62,20 +79,12 @@ export default function ActivityValuesScreen() {
       const data = await api.post('/api/activities/settings', {
         chave: item.chave,
         valor_unitario: amount,
+        escopo: scope,
+        usuarios_ids: scope === 'selecionados' ? selectedUsers : [],
       })
 
       setMessage(`${item.nome}: ${data.message}`)
-      setItems((current) =>
-        current.map((row) =>
-          row.chave === item.chave
-            ? { ...row, valor_unitario: data.atividade.valor_unitario, atualizado_em: data.atividade.atualizado_em }
-            : row,
-        ),
-      )
-      setValues((current) => ({
-        ...current,
-        [item.chave]: String(Number(data.atividade.valor_unitario || 0).toFixed(2)).replace('.', ','),
-      }))
+      await load()
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -98,6 +107,53 @@ export default function ActivityValuesScreen() {
 
       {error && <div className="activity-message error">{error}</div>}
       {message && <div className="activity-message success">{message}</div>}
+
+      <section className="activity-value-scope">
+        <div>
+          <span className="dashboard-kicker">APLICAR VALOR PARA</span>
+          <h2>Escolha quem recebe o novo valor</h2>
+        </div>
+
+        <div className="activity-value-scope-options">
+          <button
+            type="button"
+            className={scope === 'todos' ? 'active' : ''}
+            onClick={() => {
+              setScope('todos')
+              setSelectedUsers([])
+            }}
+          >
+            Todos os ajudantes
+          </button>
+          <button
+            type="button"
+            className={scope === 'selecionados' ? 'active' : ''}
+            onClick={() => setScope('selecionados')}
+          >
+            Ajudantes selecionados
+          </button>
+        </div>
+
+        {scope === 'selecionados' && (
+          <div className="activity-value-users">
+            {users.map((user) => {
+              const selected = selectedUsers.includes(user.id)
+              return (
+                <button
+                  type="button"
+                  key={user.id}
+                  className={selected ? 'selected' : ''}
+                  onClick={() => toggleUser(user.id)}
+                >
+                  <span>{user.nome}</span>
+                  <small>{user.turno || 'Sem turno'}</small>
+                  <strong>{selected ? '✓' : '+'}</strong>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       {loading ? (
         <div className="activities-loading">Carregando valores...</div>

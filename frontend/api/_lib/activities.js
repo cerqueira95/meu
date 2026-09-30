@@ -81,7 +81,28 @@ async function createSchema() {
     INSERT INTO atividade_catalogo (chave, nome, valor_unitario, ativo)
     VALUES
       ('5s', '5S', 1.00, TRUE),
-      ('amarracao', 'Amarração', 5.00, TRUE)
+      ('amarracao', 'Amarração', 5.00, TRUE),
+      ('selo_vermelho', 'Selo Vermelho', 1.00, TRUE),
+      ('separacao_marketing', 'Separação - Marketing', 2.00, TRUE),
+      ('separacao_shelf_life', 'Separação - Despejo', 10.00, TRUE),
+      ('separacao_armazenagem_chopp', 'Separação - Armazenagem de CHOPP', 0.75, TRUE),
+      ('separacao_chopp', 'Separação de CHOPP', 1.50, TRUE),
+      ('separacao_triagem_repack', 'Separação - Triagem Repack', 2.00, TRUE),
+      ('separacao_pre_picking', 'Separação - Pré-Picking', 10.00, TRUE),
+      ('separacao_transferencia', 'Separação de Transferência', 10.00, TRUE),
+      ('retorno_rota_molho_ag', 'Retorno de Rota - Molho AG', 10.00, TRUE),
+      ('retorno_rota_devolucao', 'Retorno de Rota - Devolução', 5.00, TRUE),
+      ('retorno_rota_troca', 'Retorno de Rota - Troca', 5.00, TRUE),
+      ('retorno_rota_chapatex', 'Retorno de Rota - Separação de Chapatex', 10.00, TRUE),
+      ('integralizacao_devolucao', 'Integralização da Devolução', 0.00, TRUE),
+      ('repack_gfa_vidro', 'Repack - GFA VIDRO', 0.30, TRUE),
+      ('repack_lata', 'Repack - LATA', 0.45, TRUE),
+      ('repack_long_neck', 'Repack - LONG NECK', 0.70, TRUE),
+      ('repack_pet', 'Repack - PET', 0.32, TRUE),
+      ('repack_destilado', 'Repack - DESTILADO', 0.20, TRUE),
+      ('repack_agua', 'Repack - ÁGUA', 0.40, TRUE),
+      ('repack_ow', 'Repack - OW', 0.40, TRUE),
+      ('repack_bib', 'Repack - BIB', 0.20, TRUE)
     ON CONFLICT (chave) DO NOTHING
   `
 
@@ -118,6 +139,7 @@ async function createSchema() {
       usuario_cpf VARCHAR(20),
       usuario_turno VARCHAR(80),
       papel VARCHAR(20) NOT NULL DEFAULT 'ajudante',
+      valor_unitario NUMERIC(10,2),
       criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (lancamento_id, usuario_id)
     )
@@ -139,6 +161,28 @@ async function createSchema() {
   await sql`
     ALTER TABLE atividade_lancamentos
     ADD COLUMN IF NOT EXISTS detalhes JSONB NOT NULL DEFAULT '{}'::jsonb
+  `
+
+  await sql`
+    ALTER TABLE atividade_lancamento_participantes
+    ADD COLUMN IF NOT EXISTS valor_unitario NUMERIC(10,2)
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS atividade_valores_usuario (
+      id BIGSERIAL PRIMARY KEY,
+      atividade_chave VARCHAR(80) NOT NULL,
+      usuario_id BIGINT NOT NULL,
+      valor_unitario NUMERIC(10,2) NOT NULL,
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (atividade_chave, usuario_id)
+    )
+  `
+
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_atividade_valores_usuario
+    ON atividade_valores_usuario(usuario_id, atividade_chave)
   `
 
   await sql`
@@ -178,7 +222,17 @@ async function createSchema() {
 
 export function serializeActivityBatch(row, participants = [], items = []) {
   const unitValue = Number(row.valor_unitario || 0)
-  const individualTotal = items.length * unitValue
+  const calculationQuantity = Number(row.detalhes?.quantidade_calculo || items.length)
+  const participantValues = participants.map((participant) => {
+    const participantUnitValue = Number(participant.valor_unitario ?? unitValue)
+    return {
+      ...participant,
+      valor_unitario: participantUnitValue,
+      valor_total: calculationQuantity * participantUnitValue,
+    }
+  })
+  const individualTotal = participantValues[0]?.valor_total ?? (calculationQuantity * unitValue)
+  const groupTotal = participantValues.reduce((sum, participant) => sum + participant.valor_total, 0)
 
   return {
     id: Number(row.id),
@@ -198,13 +252,15 @@ export function serializeActivityBatch(row, participants = [], items = []) {
     reprovado_em: row.reprovado_em || null,
     criado_em: row.criado_em,
     atualizado_em: row.atualizado_em,
-    participantes: participants.map((participant) => ({
+    participantes: participantValues.map((participant) => ({
       id: Number(participant.id),
       usuario_id: Number(participant.usuario_id),
       usuario_nome: participant.usuario_nome,
       usuario_cpf: participant.usuario_cpf || null,
       usuario_turno: participant.usuario_turno || null,
       papel: participant.papel,
+      valor_unitario: participant.valor_unitario,
+      valor_total: participant.valor_total,
     })),
     itens: items.map((item) => ({
       id: Number(item.id),
@@ -216,7 +272,7 @@ export function serializeActivityBatch(row, participants = [], items = []) {
     quantidade_areas: items.length,
     quantidade_participantes: participants.length,
     valor_individual: individualTotal,
-    valor_grupo: individualTotal * participants.length,
+    valor_grupo: groupTotal,
   }
 }
 
@@ -259,15 +315,41 @@ export function validImageData(value) {
 }
 
 
-export async function getActivityConfig(chave) {
+export async function getActivityConfig(chave, usuarioId = null) {
   await ensureActivitiesSchema()
 
-  const rows = await sql`
-    SELECT id, chave, nome, valor_unitario, ativo, atualizado_em
-    FROM atividade_catalogo
-    WHERE chave = ${chave}
-    LIMIT 1
-  `
+  const rows = usuarioId
+    ? await sql`
+        SELECT
+          c.id,
+          c.chave,
+          c.nome,
+          c.valor_unitario AS valor_padrao,
+          COALESCE(v.valor_unitario, c.valor_unitario) AS valor_unitario,
+          c.ativo,
+          c.atualizado_em,
+          (v.id IS NOT NULL) AS valor_personalizado
+        FROM atividade_catalogo c
+        LEFT JOIN atividade_valores_usuario v
+          ON v.atividade_chave = c.chave
+         AND v.usuario_id = ${usuarioId}
+        WHERE c.chave = ${chave}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT
+          id,
+          chave,
+          nome,
+          valor_unitario AS valor_padrao,
+          valor_unitario,
+          ativo,
+          atualizado_em,
+          FALSE AS valor_personalizado
+        FROM atividade_catalogo
+        WHERE chave = ${chave}
+        LIMIT 1
+      `
 
   const row = rows[0]
   if (!row) return null
@@ -276,7 +358,9 @@ export async function getActivityConfig(chave) {
     id: Number(row.id),
     chave: row.chave,
     nome: row.nome,
+    valor_padrao: Number(row.valor_padrao || 0),
     valor_unitario: Number(row.valor_unitario || 0),
+    valor_personalizado: Boolean(row.valor_personalizado),
     ativo: Boolean(row.ativo),
     atualizado_em: row.atualizado_em,
   }

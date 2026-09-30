@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api.js'
 import AmarracaoScreen from './AmarracaoScreen.jsx'
+import SeloVermelhoScreen from './SeloVermelhoScreen.jsx'
+import SeparacaoScreen from './SeparacaoScreen.jsx'
+import RetornoRotaScreen from './RetornoRotaScreen.jsx'
+import IntegralizacaoDevolucaoScreen from './IntegralizacaoDevolucaoScreen.jsx'
+import RepackScreen from './RepackScreen.jsx'
 import './ActivitiesScreen.css'
 
 function money(value) {
@@ -78,7 +83,7 @@ function StatusBadge({ status }) {
   )
 }
 
-function ActivityCatalog({ isAdmin, onOpen5s, onOpenAmarracao, onOpenApprovals }) {
+function ActivityCatalog({ isAdmin, onOpen5s, onOpenAmarracao, onOpenSeloVermelho, onOpenSeparacao, onOpenRetornoRota, onOpenIntegralizacaoDevolucao, onOpenRepack, onOpenApprovals }) {
   return (
     <section className="activities-page">
       <div className="activities-hero">
@@ -133,19 +138,70 @@ function ActivityCatalog({ isAdmin, onOpen5s, onOpenAmarracao, onOpenApprovals }
           <span className="activity-module-arrow">→</span>
         </button>
 
-        <article className="activity-module-card coming">
-          <span className="activity-module-icon">＋</span>
+        <button className="activity-module-card available" type="button" onClick={onOpenSeloVermelho}>
+          <span className="activity-module-icon">🔴</span>
           <div className="activity-module-copy">
             <div className="activity-module-title">
-              <h2>Próximas atividades</h2>
-              <span>Em breve</span>
+              <h2>Selo Vermelho</h2>
+              <span>Disponível</span>
             </div>
             <p>
-              Repack, Selo Vermelho e os demais módulos serão adicionados seguindo
-              o mesmo padrão.
+              Registre a embalagem, quantidade de PLTs, motivo da anomalia e a evidência
+              em um único lançamento.
             </p>
           </div>
-        </article>
+          <span className="activity-module-arrow">→</span>
+        </button>
+
+        <button className="activity-module-card available" type="button" onClick={onOpenSeparacao}>
+          <span className="activity-module-icon">📦</span>
+          <div className="activity-module-copy">
+            <div className="activity-module-title">
+              <h2>Separação</h2>
+              <span>Disponível</span>
+            </div>
+            <p>
+              Marketing, Despejo, CHOPP, Triagem Repack, Pré-Picking e Separação de Transferência.
+            </p>
+          </div>
+          <span className="activity-module-arrow">→</span>
+        </button>
+
+        <button className="activity-module-card available" type="button" onClick={onOpenRetornoRota}>
+          <span className="activity-module-icon">↩</span>
+          <div className="activity-module-copy">
+            <div className="activity-module-title">
+              <h2>Retorno de Rota</h2>
+              <span>Disponível</span>
+            </div>
+            <p>Molho AG, Devolução, Troca e Separação de Chapatex com participantes e evidência.</p>
+          </div>
+          <span className="activity-module-arrow">→</span>
+        </button>
+
+        <button className="activity-module-card available" type="button" onClick={onOpenIntegralizacaoDevolucao}>
+          <span className="activity-module-icon">↻</span>
+          <div className="activity-module-copy">
+            <div className="activity-module-title">
+              <h2>Integralização da Devolução</h2>
+              <span>Disponível</span>
+            </div>
+            <p>Confirme se a devolução foi integralizada 100%, informe participantes e envie a evidência.</p>
+          </div>
+          <span className="activity-module-arrow">→</span>
+        </button>
+
+        <button className="activity-module-card available" type="button" onClick={onOpenRepack}>
+          <span className="activity-module-icon">♻</span>
+          <div className="activity-module-copy">
+            <div className="activity-module-title">
+              <h2>Repack</h2>
+              <span>Disponível</span>
+            </div>
+            <p>Registre SKU recuperado, quantidade de caixas, participantes e evidência.</p>
+          </div>
+          <span className="activity-module-arrow">→</span>
+        </button>
       </div>
     </section>
   )
@@ -994,6 +1050,26 @@ export default function ActivitiesScreen({ currentUser, initialView = 'catalog' 
     return <AmarracaoScreen currentUser={currentUser} onBack={() => setView('catalog')} />
   }
 
+  if (view === 'selo-vermelho') {
+    return <SeloVermelhoScreen currentUser={currentUser} onBack={() => setView('catalog')} />
+  }
+
+  if (view === 'separacao') {
+    return <SeparacaoScreen currentUser={currentUser} onBack={() => setView('catalog')} />
+  }
+
+  if (view === 'retorno-rota') {
+    return <RetornoRotaScreen currentUser={currentUser} onBack={() => setView('catalog')} />
+  }
+
+  if (view === 'integralizacao-devolucao') {
+    return <IntegralizacaoDevolucaoScreen currentUser={currentUser} onBack={() => setView('catalog')} />
+  }
+
+  if (view === 'repack') {
+    return <RepackScreen currentUser={currentUser} onBack={() => setView('catalog')} />
+  }
+
   if (view === 'approvals' && isAdmin) {
     return <ApprovalsScreen onBack={() => setView('catalog')} />
   }
@@ -1003,6 +1079,11 @@ export default function ActivitiesScreen({ currentUser, initialView = 'catalog' 
       isAdmin={isAdmin}
       onOpen5s={() => setView('5s')}
       onOpenAmarracao={() => setView('amarracao')}
+      onOpenSeloVermelho={() => setView('selo-vermelho')}
+      onOpenSeparacao={() => setView('separacao')}
+      onOpenRetornoRota={() => setView('retorno-rota')}
+      onOpenIntegralizacaoDevolucao={() => setView('integralizacao-devolucao')}
+      onOpenRepack={() => setView('repack')}
       onOpenApprovals={() => setView('approvals')}
     />
   )

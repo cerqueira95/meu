@@ -9,6 +9,9 @@ import EscalonadaScreen from './components/EscalonadaScreen.jsx'
 import EscalonadaAdminScreen from './components/EscalonadaAdminScreen.jsx'
 import ActivitiesScreen from './components/ActivitiesScreen.jsx'
 import ActivityValuesScreen from './components/ActivityValuesScreen.jsx'
+import WalletScreen from './components/WalletScreen.jsx'
+import WalletCapsScreen from './components/WalletCapsScreen.jsx'
+import HighlightsScreen from './components/HighlightsScreen.jsx'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
 
@@ -434,6 +437,17 @@ function AppIcon({ name }) {
         <path d="M16 7h2v2" />
       </>
     ),
+    carteira: (
+      <>
+        <path d="M4 7h15a2 2 0 0 1 2 2v10H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h13" />
+        <path d="M16 12h5v4h-5a2 2 0 1 1 0-4Z" />
+      </>
+    ),
+    destaques: (
+      <>
+        <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+      </>
+    ),
     configuracoes: (
       <>
         <circle cx="12" cy="12" r="3" />
@@ -471,6 +485,7 @@ function DashboardHome({ usuario, onNavigate }) {
   const firstName = String(usuario.nome || 'Usuário').trim().split(' ')[0]
   const profile = String(usuario.perfil || '').toUpperCase()
   const canUseActivities = profile === 'AJUDANTE' || profile === 'ADM'
+  const canUseWallet = profile === 'AJUDANTE' || profile === 'ADM'
 
   return (
     <>
@@ -535,6 +550,9 @@ function DashboardHome({ usuario, onNavigate }) {
             ...(canUseActivities
               ? [['atividades', 'Atividades', '5S e lançamentos operacionais do armazém']]
               : []),
+            ...(canUseWallet
+              ? [['carteira', 'Carteira', 'Saldo, teto e extrato da remuneração variável']]
+              : []),
             ...(String(usuario.perfil || '').toUpperCase() === 'ADM'
               ? [['usuarios', 'Usuários', 'Perfis, acessos e permissões']]
               : []),
@@ -586,6 +604,9 @@ function UsersScreen({ currentUser }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
+  const [defaultPassword, setDefaultPassword] = useState('')
+  const [bulkPasswordSaving, setBulkPasswordSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(0)
 
   const profiles = ['ADM', 'Operador', 'Ajudante', 'Conferente']
 
@@ -712,6 +733,53 @@ function UsersScreen({ currentUser }) {
     }
   }
 
+  async function applyDefaultPassword() {
+    if (defaultPassword.length < 6) {
+      setError('A senha padrão deve ter pelo menos 6 caracteres.')
+      return
+    }
+
+    if (!window.confirm('Aplicar esta senha padrão para todos os usuários ativos?')) return
+
+    setBulkPasswordSaving(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const data = await api.post('/api/users/admin-actions', {
+        action: 'bulk_password',
+        senha: defaultPassword,
+      })
+      setSuccess(data.message)
+      setDefaultPassword('')
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setBulkPasswordSaving(false)
+    }
+  }
+
+  async function deleteUser(user) {
+    if (!window.confirm(`Apagar definitivamente ${user.nome} do cadastro?`)) return
+
+    setDeletingId(user.id)
+    setError('')
+    setSuccess('')
+
+    try {
+      const data = await api.post('/api/users/admin-actions', {
+        action: 'delete_user',
+        usuario_id: user.id,
+      })
+      setSuccess(data.message)
+      await loadUsers()
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setDeletingId(0)
+    }
+  }
+
   const filteredUsers = usuarios.filter((user) => {
     const text = search.trim().toLowerCase()
     const matchesText =
@@ -760,6 +828,30 @@ function UsersScreen({ currentUser }) {
           <small>perfil geral do sistema</small>
         </article>
       </div>
+
+      <section className="users-default-password">
+        <div>
+          <span className="dashboard-kicker">SENHA PADRÃO</span>
+          <h2>Replicar senha para todos</h2>
+          <p>Digite uma senha e aplique em todos os usuários ativos. No próximo acesso eles serão orientados a trocar a senha.</p>
+        </div>
+        <div className="users-default-password-action">
+          <input
+            type="password"
+            value={defaultPassword}
+            onChange={(event) => setDefaultPassword(event.target.value)}
+            placeholder="Mínimo de 6 caracteres"
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            onClick={applyDefaultPassword}
+            disabled={bulkPasswordSaving}
+          >
+            {bulkPasswordSaving ? 'Aplicando...' : 'Aplicar para todos'}
+          </button>
+        </div>
+      </section>
 
       <div className="users-panel">
         <div className="users-toolbar">
@@ -851,6 +943,16 @@ function UsersScreen({ currentUser }) {
                         >
                           {user.status === 'ativo' ? 'Inativar' : 'Ativar'}
                         </button>
+                        {String(user.perfil || '').toUpperCase() !== 'ADM' && (
+                          <button
+                            type="button"
+                            className="delete"
+                            onClick={() => deleteUser(user)}
+                            disabled={deletingId === user.id}
+                          >
+                            {deletingId === user.id ? 'Apagando...' : 'Apagar'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1019,18 +1121,24 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   const [escalonadaNotifications, setEscalonadaNotifications] = useState([])
   const [unreadActivities, setUnreadActivities] = useState(0)
   const [activityNotifications, setActivityNotifications] = useState([])
+  const [myStars, setMyStars] = useState(0)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [profilePhotoOpen, setProfilePhotoOpen] = useState(false)
   const notificationRef = useRef(null)
 
   const isAdmin = String(usuario.perfil || '').toUpperCase() === 'ADM'
   const canUseActivities = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase())
+  const canUseWallet = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase())
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
     { id: 'news', label: 'Armazém New', icon: 'news' },
     ...(canUseActivities ? [{ id: 'atividades', label: 'Atividades', icon: 'atividades' }] : []),
+    ...(canUseWallet ? [{ id: 'carteira', label: 'Carteira', icon: 'carteira' }] : []),
+    { id: 'destaques', label: 'Destaques', icon: 'destaques' },
+    ...(isAdmin ? [{ id: 'gerenciar-destaques', label: 'Gerenciar destaques', icon: 'destaques' }] : []),
     ...(isAdmin ? [{ id: 'aprovar-atividades', label: 'Aprovar atividades', icon: 'atividades' }] : []),
     ...(isAdmin ? [{ id: 'valores-atividades', label: 'Valores das atividades', icon: 'configuracoes' }] : []),
+    ...(isAdmin ? [{ id: 'tetos-carteira', label: 'Tetos da carteira', icon: 'carteira' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     ...(isAdmin ? [{ id: 'relatorios', label: 'Relatórios', icon: 'relatorios' }] : []),
@@ -1041,10 +1149,11 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 
     async function refreshUnread() {
       try {
-        const [newsData, escalonadaData, activitiesData] = await Promise.all([
+        const [newsData, escalonadaData, activitiesData, highlightsData] = await Promise.all([
           api.get('/api/news'),
           api.get('/api/escalonada'),
           canUseActivities ? api.get('/api/activities/notifications') : Promise.resolve({ nao_lidas: 0, notificacoes: [] }),
+          api.get('/api/highlights'),
         ])
         if (active) {
           setUnreadNews(Number(newsData.nao_lidas || 0))
@@ -1053,6 +1162,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
           setEscalonadaNotifications((escalonadaData.notificacoes || []).slice(0, 5))
           setUnreadActivities(Number(activitiesData.nao_lidas || 0))
           setActivityNotifications((activitiesData.notificacoes || []).slice(0, 6))
+          setMyStars(Number(highlightsData.minhas_estrelas || 0))
         }
       } catch {
         // A ausência temporária do feed não bloqueia a navegação.
@@ -1099,11 +1209,15 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     rotas: { title: 'Rotas', description: 'Acompanhamento das rotas e entregas.', icon: 'rotas' },
     devolucoes: { title: 'Devoluções', description: 'Gestão e análise das devoluções da operação.', icon: 'devolucoes' },
     atividades: { title: 'Atividades', description: 'Lançamentos operacionais do armazém.', icon: 'atividades' },
+    carteira: { title: 'Carteira', description: 'Saldo, teto e extrato da remuneração variável.', icon: 'carteira' },
+    destaques: { title: 'Destaques da operação', description: 'Reconhecimentos e estrelas da equipe.', icon: 'destaques' },
+    'gerenciar-destaques': { title: 'Gerenciar destaques', description: 'Escolha os destaques da operação e registre o motivo.', icon: 'destaques' },
     escalonada: { title: 'Minha Escalonada', description: 'Seu resultado diário e incentivo acumulado.', icon: 'escalonada' },
     usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
     relatorios: { title: 'Relatórios', description: 'Indicadores consolidados e exportações.', icon: 'relatorios' },
     'aprovar-atividades': { title: 'Aprovar atividades', description: 'Fila central para revisar, editar, aprovar ou reprovar lançamentos.', icon: 'atividades' },
     'valores-atividades': { title: 'Valores das atividades', description: 'Configuração dos valores unitários das atividades.', icon: 'configuracoes' },
+    'tetos-carteira': { title: 'Tetos da carteira', description: 'Limite mensal individual dos ajudantes.', icon: 'carteira' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
 
@@ -1243,6 +1357,9 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
                 <span className="sidebar-news-badge">
                   {unreadNews > 9 ? '9+' : unreadNews}
                 </span>
+              )}
+              {item.id === 'destaques' && myStars > 0 && (
+                <span className="sidebar-news-badge">★ {myStars}</span>
               )}
             </button>
           ))}
@@ -1448,6 +1565,14 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <ActivitiesScreen currentUser={usuario} initialView="approvals" />
           ) : activeSection === 'valores-atividades' && isAdmin ? (
             <ActivityValuesScreen />
+          ) : activeSection === 'tetos-carteira' && isAdmin ? (
+            <WalletCapsScreen />
+          ) : activeSection === 'carteira' && canUseWallet ? (
+            <WalletScreen />
+          ) : activeSection === 'destaques' ? (
+            <HighlightsScreen />
+          ) : activeSection === 'gerenciar-destaques' && isAdmin ? (
+            <HighlightsScreen adminMode />
           ) : activeSection === 'escalonada' ? (
             <EscalonadaScreen />
           ) : activeSection === 'relatorios' && isAdmin ? (

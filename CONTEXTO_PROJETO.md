@@ -223,3 +223,74 @@ Rota:
 - \`GET/POST /api/activities/amarracao\`
 
 Os detalhes específicos (Mapa/OP, placa, segundo ajudante) ficam em \`atividade_lancamentos.detalhes\` (JSONB).
+
+
+## Atualizações locais — Atividades, Carteira, Usuários e Destaques (2026-09-30)
+
+Estas alterações estão na cópia local `C:\Users\carla\Desktop\meu-render-copy` e ainda NÃO devem ser enviadas ao Git/Render sem autorização explícita do usuário.
+
+### Atividades adicionais
+- Selo Vermelho: tipos de embalagem PET, LATA, LONG NECK, RGB e BAG BOX; quantidade de PLTs; motivo; foto; cálculo por PLT.
+- Separação: inclui Marketing, Despejo, Armazenagem de CHOPP, Separação de CHOPP, Triagem Repack, Pré-Picking e Separação de Transferência.
+- Separação de Transferência inicia com R$ 10,00 e entra em Valores das atividades.
+- Retorno de Rota substitui o antigo nome Atividades do Turno B e inclui Molho AG, Devolução, Troca e Separação de Chapatex.
+- Integralização da Devolução: se não integralizar 100%, exige motivo e paga 50% do valor configurado.
+- Repack: lançamento individual; cada colaborador lança apenas o próprio Repack, sem adicionar participantes.
+- Repack usa cálculo por caixa e tipos GFA VIDRO, LATA, LONG NECK, PET, DESTILADO, ÁGUA, OW e BIB.
+
+### Valores individuais por ajudante
+A tela `Valores das atividades` permite:
+- alterar valor padrão para todos;
+- selecionar um ou mais ajudantes e aplicar valor personalizado somente a eles.
+A tabela `atividade_valores_usuario` guarda exceções individuais.
+O valor é gravado no participante no momento do lançamento para preservar histórico.
+
+### Carteira e tetos
+- Menu `Carteira`: soma Valor WMS + incentivo da Escalonada + atividades aprovadas.
+- O extrato mostra cada origem separadamente.
+- O teto mensal limita o saldo creditado; excedente fica visível como valor bloqueado pelo teto.
+- ADM possui `Tetos da carteira`, permitindo teto individual (ex.: 400, 500 ou outro valor) ou `Sem teto`.
+- Tabela: `remuneracao_tetos`.
+- Rotas: `GET /api/wallet`, `GET/POST /api/wallet/caps`.
+
+### Importação WMS — Empilhadeira
+Foram importados os usuários ativos do WMS com perfil Empilhadeira:
+- 58 registros retornados pelo WMS;
+- 1 duplicidade por CPF foi consolidada;
+- 57 usuários únicos foram inseridos/vinculados;
+- no Warehouse ficaram como `cargo = Empilhadeira`, `perfil = Operador`, `status = ativo`;
+- `wms_usuario_id` e `wms_login` foram preservados;
+- um registro veio sem CPF.
+
+### Usuários — ações ADM
+Rota nova: `POST /api/users/admin-actions`.
+Ações:
+- `bulk_password`: ADM informa uma senha padrão e replica para todos os usuários ativos; `alterar_senha = TRUE`; sessões dos demais usuários são encerradas.
+- `delete_user`: permite apagar um usuário não-ADM escolhido, desde que não haja vínculo histórico impeditivo; se houver, a API orienta inativar em vez de excluir.
+A tela de Usuários ganhou campo de senha padrão e botão `Apagar` por usuário não-ADM.
+
+### Destaques da operação
+Novo módulo público `Destaques` e módulo ADM `Gerenciar destaques`.
+Funções elegíveis:
+- Operador
+- Ajudante
+- Conferente
+- Manobrista
+
+O ADM escolhe:
+- função;
+- pessoa;
+- período: dia, semana ou mês;
+- data de referência;
+- motivo do reconhecimento.
+
+Regras:
+- um destaque por função/período;
+- cada destaque gera uma estrela permanente para o colaborador;
+- o mural público mostra foto de perfil, nome, função, período, motivo e total de estrelas;
+- o próprio colaborador vê `Minhas estrelas` com histórico;
+- o menu `Destaques` mostra badge `★ N` quando o usuário possui estrelas;
+- a foto vem automaticamente de `usuarios.foto_perfil`.
+Tabela: `operacao_destaques`.
+Rota: `GET/POST /api/highlights`.
+Tela: `frontend/src/components/HighlightsScreen.jsx`.

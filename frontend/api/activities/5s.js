@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     await ensureActivitiesSchema()
 
     if (req.method === 'GET') {
-      const config = await getActivityConfig('5s')
+      const config = await getActivityConfig('5s', usuario.id)
       if (!config?.ativo) {
         return res.status(404).json({ status: 'error', message: 'Atividade 5S indisponível.' })
       }
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ status: 'error', message: validation })
       }
 
-      const config = await getActivityConfig('5s')
+      const config = await getActivityConfig('5s', usuario.id)
       if (!config?.ativo) {
         return res.status(404).json({ status: 'error', message: 'Atividade 5S indisponível.' })
       }
@@ -147,6 +147,11 @@ export default async function handler(req, res) {
         { ...principal, papel: 'principal' },
         ...helpers.map((helper) => ({ ...helper, papel: 'ajudante' })),
       ]
+
+      for (const participant of participantes) {
+        const participantConfig = await getActivityConfig('5s', participant.id)
+        participant.valor_unitario = Number(participantConfig?.valor_unitario ?? config.valor_unitario)
+      }
 
       const dataAtividade = currentBahiaDate()
 
@@ -218,7 +223,8 @@ export default async function handler(req, res) {
               usuario_nome,
               usuario_cpf,
               usuario_turno,
-              papel
+              papel,
+              valor_unitario
             )
             VALUES (
               ${lancamentoId},
@@ -226,7 +232,8 @@ export default async function handler(req, res) {
               ${participant.nome},
               ${participant.cpf || null},
               ${participant.turno || null},
-              ${participant.papel}
+              ${participant.papel},
+              ${participant.valor_unitario}
             )
           `
         }

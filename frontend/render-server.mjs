@@ -22,6 +22,8 @@ const routes = new Map([
   ['/api/auth/quick-login', './api/auth/quick-login.js'],
   ['/api/users', './api/users/index.js'],
   ['/api/users/update', './api/users/update.js'],
+  ['/api/users/admin-actions', './api/users/admin-actions.js'],
+  ['/api/highlights', './api/highlights/index.js'],
   ['/api/profile/photo', './api/profile/photo.js'],
   ['/api/media/upload', './api/media/upload.js'],
   ['/api/news', './api/news/index.js'],
@@ -39,9 +41,16 @@ const routes = new Map([
   ['/api/cron/rateio', './api/cron/rateio.js'],
   ['/api/activities/5s', './api/activities/5s.js'],
   ['/api/activities/amarracao', './api/activities/amarracao.js'],
+  ['/api/activities/selo-vermelho', './api/activities/selo-vermelho.js'],
+  ['/api/activities/separacao', './api/activities/separacao.js'],
+  ['/api/activities/retorno-rota', './api/activities/retorno-rota.js'],
+  ['/api/activities/integralizacao-devolucao', './api/activities/integralizacao-devolucao.js'],
+  ['/api/activities/repack', './api/activities/repack.js'],
   ['/api/activities/admin', './api/activities/admin.js'],
   ['/api/activities/notifications', './api/activities/notifications.js'],
   ['/api/activities/settings', './api/activities/settings.js'],
+  ['/api/wallet', './api/wallet/index.js'],
+  ['/api/wallet/caps', './api/wallet/caps.js'],
 ])
 
 const MIME_TYPES = {

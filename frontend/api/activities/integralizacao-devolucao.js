@@ -9,6 +9,7 @@ import {
 } from '../_lib/activities.js'
 
 const ALLOWED_PROFILES = new Set(['AJUDANTE', 'ADM'])
+const KEY = 'integralizacao_devolucao'
 
 export default async function handler(req, res) {
   const usuario = await requireActivitiesUser(req, res)
@@ -16,42 +17,40 @@ export default async function handler(req, res) {
 
   try {
     await ensureActivitiesSchema()
-    const config = await getActivityConfig('amarracao', usuario.id)
+    const config = await getActivityConfig(KEY, usuario.id)
 
     if (!config?.ativo) {
-      return res.status(404).json({ status: 'error', message: 'Atividade Amarração indisponível.' })
+      return res.status(404).json({ status: 'error', message: 'Atividade indisponível.' })
     }
-
     if (req.method === 'GET') {
-      const [people, recent] = await Promise.all([
-        sql`
-          SELECT id, nome, turno, perfil
-          FROM usuarios
-          WHERE status = 'ativo'
-            AND id <> ${usuario.id}
-          ORDER BY nome
-        `,
-        sql`
-          SELECT DISTINCT l.id
-          FROM atividade_lancamentos l
-          INNER JOIN atividade_lancamento_participantes p ON p.lancamento_id = l.id
-          WHERE l.atividade_chave = 'amarracao'
-            AND p.usuario_id = ${usuario.id}
-          ORDER BY l.id DESC
-          LIMIT 8
-        `,
-      ])
+      const users = await sql`
+        SELECT id, nome, turno, perfil
+        FROM usuarios
+        WHERE status = 'ativo'
+          AND id <> ${usuario.id}
+        ORDER BY nome
+      `
+
+      const recent = await sql`
+        SELECT DISTINCT l.id
+        FROM atividade_lancamentos l
+        INNER JOIN atividade_lancamento_participantes p
+          ON p.lancamento_id = l.id
+        WHERE l.atividade_chave = ${KEY}
+          AND p.usuario_id = ${usuario.id}
+        ORDER BY l.id DESC
+        LIMIT 10
+      `
 
       const lancamentos = []
       for (const row of recent) {
         const batch = await loadActivityBatch(Number(row.id))
         if (batch) lancamentos.push(batch)
       }
-
       return res.status(200).json({
         status: 'ok',
         atividade: config,
-        usuarios: people.map((person) => ({
+        usuarios: users.map((person) => ({
           id: Number(person.id),
           nome: person.nome,
           turno: person.turno || '',
@@ -62,34 +61,27 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const payload = normalizePayload(req.body)
-      const validation = validatePayload(payload)
+      const helperIds = Array.isArray(req.body?.ajudantes_usuario_ids)
+        ? [...new Set(req.body.ajudantes_usuario_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
+        : []
+      const integralizacao100 = req.body?.integralizacao_100 !== false
+      const motivo = String(req.body?.motivo_nao_integralizado || '').trim().slice(0, 2000)
+      const evidence = String(req.body?.evidencia_foto || '').trim()
 
-      if (validation) {
-        return res.status(400).json({ status: 'error', message: validation })
+      if (helperIds.length > 20) {
+        return res.status(400).json({ status: 'error', message: 'Selecione no máximo 20 ajudantes.' })
       }
-
-      if (!validImageData(payload.evidencia_foto)) {
+      if (!integralizacao100 && !motivo) {
         return res.status(400).json({
           status: 'error',
-          message: 'Envie uma foto válida como evidência.',
+          message: 'Informe o motivo quando não conseguir integralizar 100%.',
         })
       }
 
-      const existing = await sql`
-        SELECT l.id, l.usuario_criador_nome
-        FROM atividade_lancamentos l
-        INNER JOIN atividade_lancamento_itens i ON i.lancamento_id = l.id
-        WHERE l.atividade_chave = 'amarracao'
-          AND l.status <> 'reprovado'
-          AND i.opcao_chave = ${payload.mapa_op}
-        LIMIT 1
-      `
-
-      if (existing[0]) {
-        return res.status(409).json({
+      if (!validImageData(evidence)) {
+        return res.status(400).json({
           status: 'error',
-          message: `Esse Mapa/OP já foi lançado por ${existing[0].usuario_criador_nome}.`,
+          message: 'Tire ou envie uma foto válida como evidência.',
         })
       }
 
@@ -105,40 +97,69 @@ export default async function handler(req, res) {
       if (!principal) {
         return res.status(401).json({ status: 'error', message: 'Usuário não encontrado.' })
       }
+      const helpers = []
+      for (const helperId of helperIds) {
+        if (helperId === Number(usuario.id)) continue
 
-      let ajudante = null
-
-      if (payload.ajudante_usuario_id) {
-        const helperRows = await sql`
+        const rows = await sql`
           SELECT id, nome, cpf, turno
           FROM usuarios
-          WHERE id = ${payload.ajudante_usuario_id}
-            AND id <> ${usuario.id}
+          WHERE id = ${helperId}
             AND status = 'ativo'
           LIMIT 1
         `
-        ajudante = helperRows[0]
 
-        if (!ajudante) {
+        if (!rows[0]) {
           return res.status(400).json({
             status: 'error',
-            message: 'O segundo ajudante selecionado não foi encontrado ou está inativo.',
+            message: 'Um dos ajudantes selecionados não foi encontrado ou está inativo.',
           })
         }
+        helpers.push(rows[0])
       }
 
-      const participantes = [
+      const participants = [
         { ...principal, papel: 'principal' },
-        ...(ajudante ? [{ ...ajudante, papel: 'ajudante' }] : []),
+        ...helpers.map((helper) => ({ ...helper, papel: 'ajudante' })),
       ]
-
-      for (const participant of participantes) {
-        const participantConfig = await getActivityConfig('amarracao', participant.id)
+      for (const participant of participants) {
+        const participantConfig = await getActivityConfig(KEY, participant.id)
         participant.valor_unitario = Number(participantConfig?.valor_unitario ?? config.valor_unitario)
       }
 
-      let lancamentoId = null
+      const dataAtividade = currentBahiaDate()
 
+      for (const participant of participants) {
+        const duplicate = await sql`
+          SELECT l.id
+          FROM atividade_lancamentos l
+          INNER JOIN atividade_lancamento_participantes p
+            ON p.lancamento_id = l.id
+          WHERE l.atividade_chave = ${KEY}
+            AND l.data_atividade = ${dataAtividade}
+            AND l.status <> 'reprovado'
+            AND p.usuario_id = ${participant.id}
+          LIMIT 1
+        `
+
+        if (duplicate[0]) {
+          return res.status(409).json({
+            status: 'error',
+            message: participant.papel === 'principal'
+              ? 'Você já possui lançamento hoje para essa atividade.'
+              : `${participant.nome} já possui lançamento hoje para essa atividade.`,
+          })
+        }
+      }
+      const details = {
+        integralizacao_100: integralizacao100,
+        motivo_nao_integralizado: integralizacao100 ? null : motivo,
+        quantidade_ajudantes: helpers.length,
+        ajudantes_nomes: helpers.map((helper) => helper.nome),
+        quantidade_calculo: integralizacao100 ? 1 : 0.5,
+      }
+
+      let lancamentoId = null
       try {
         const inserted = await sql`
           INSERT INTO atividade_lancamentos (
@@ -153,26 +174,20 @@ export default async function handler(req, res) {
             status
           )
           VALUES (
-            'amarracao',
-            'Amarração',
-            ${currentBahiaDate()},
+            ${KEY},
+            'Integralização da Devolução',
+            ${dataAtividade},
             ${principal.id},
             ${principal.nome},
             ${config.valor_unitario},
-            ${payload.observacao || null},
-            ${JSON.stringify({
-              mapa_op: payload.mapa_op,
-              placa_cavalo: payload.placa_cavalo,
-              segundo_ajudante: Boolean(ajudante),
-            })}::jsonb,
+            ${integralizacao100 ? 'Integralização 100%' : `Não integralizou 100% | Motivo: ${motivo}`},
+            ${JSON.stringify(details)}::jsonb,
             'pendente'
           )
           RETURNING id
         `
-
         lancamentoId = Number(inserted[0].id)
-
-        for (const participant of participantes) {
+        for (const participant of participants) {
           await sql`
             INSERT INTO atividade_lancamento_participantes (
               lancamento_id,
@@ -205,10 +220,10 @@ export default async function handler(req, res) {
           )
           VALUES (
             ${lancamentoId},
-            ${payload.mapa_op},
-            ${`Mapa/OP ${payload.mapa_op}`},
+            'integralizacao',
+            'Integralização da Devolução',
             ${config.valor_unitario},
-            ${payload.evidencia_foto}
+            ${evidence}
           )
         `
       } catch (error) {
@@ -220,9 +235,9 @@ export default async function handler(req, res) {
 
       return res.status(201).json({
         status: 'ok',
-        message: ajudante
-          ? 'Amarração enviada para aprovação para os dois participantes.'
-          : 'Amarração enviada para aprovação.',
+        message: helpers.length
+          ? 'Integralização enviada para aprovação para todos os participantes.'
+          : 'Integralização enviada para aprovação.',
         lancamento: await loadActivityBatch(lancamentoId),
       })
     }
@@ -230,18 +245,16 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'GET, POST')
     return res.status(405).json({ status: 'error', message: 'Método não permitido.' })
   } catch (error) {
-    console.error('activities_amarracao_error', error)
+    console.error('activities_integralizacao_devolucao_error', error)
     return res.status(500).json({
       status: 'error',
-      message: 'Não foi possível processar o lançamento de Amarração.',
+      message: 'Não foi possível processar a Integralização da Devolução.',
     })
   }
 }
-
 async function requireActivitiesUser(req, res) {
   try {
     const usuario = await getSessionUser(req)
-
     if (!usuario) {
       res.status(401).json({ status: 'error', message: 'Sessão não autenticada.' })
       return null
@@ -257,32 +270,8 @@ async function requireActivitiesUser(req, res) {
 
     return usuario
   } catch (error) {
-    console.error('activities_amarracao_auth_error', error)
+    console.error('activities_integralizacao_devolucao_auth_error', error)
     res.status(500).json({ status: 'error', message: 'Não foi possível validar seu acesso.' })
     return null
   }
-}
-
-function normalizePayload(body = {}) {
-  return {
-    mapa_op: normalizeMap(body.mapa_op),
-    placa_cavalo: normalizePlate(body.placa_cavalo),
-    ajudante_usuario_id: Number(body.ajudante_usuario_id || 0) || 0,
-    evidencia_foto: String(body.evidencia_foto || '').trim(),
-    observacao: String(body.observacao || '').trim().slice(0, 3000),
-  }
-}
-
-function validatePayload(payload) {
-  if (!payload.mapa_op) return 'Informe o Mapa ou OP.'
-  if (!payload.placa_cavalo) return 'Informe a placa do cavalo.'
-  return ''
-}
-
-function normalizeMap(value) {
-  return String(value || '').trim().toUpperCase().replace(/\\s+/g, ' ')
-}
-
-function normalizePlate(value) {
-  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
 }

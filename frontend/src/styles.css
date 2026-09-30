@@ -5052,3 +5052,29 @@ form {
     word-break: normal;
   }
 }
+
+
+.users-default-password{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(320px,.8fr);
+  gap:18px;
+  align-items:center;
+  padding:18px 20px;
+  border:1px solid #e2e7ed;
+  border-radius:17px;
+  background:#fff;
+  box-shadow:0 8px 20px rgba(29,45,62,.03);
+}
+.users-default-password h2{margin:5px 0 4px;color:#1c2b3e;font-size:18px}
+.users-default-password p{margin:0;color:#7d8996;font-size:11px;line-height:1.5}
+.users-default-password-action{display:grid;grid-template-columns:1fr auto;gap:8px}
+.users-default-password-action input{min-height:42px;border:1px solid #dfe5eb;border-radius:10px;padding:0 12px;font:inherit}
+.users-default-password-action button{border:0;border-radius:10px;padding:0 14px;background:#155eef;color:#fff;font-weight:850;cursor:pointer}
+.users-default-password-action button:disabled{opacity:.6;cursor:wait}
+.table-actions button.delete{color:#b42318;background:#fff1f0;border-color:#fecdca}
+
+@media(max-width:760px){
+  .users-default-password{grid-template-columns:1fr}
+  .users-default-password-action{grid-template-columns:1fr}
+  .users-default-password-action button{min-height:42px}
+}
