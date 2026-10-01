@@ -71,48 +71,77 @@ function LinkifiedText({ text }) {
 async function compressImage(file) {
   if (!file) return null
 
-  if (!file.type.startsWith('image/')) {
+  const fileName = String(file.name || '').toLowerCase()
+  const looksLikeImage =
+    String(file.type || '').startsWith('image/') ||
+    /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(fileName)
+
+  if (!looksLikeImage) {
     throw new Error('Selecione apenas arquivos de imagem.')
   }
 
-  const dataUrl = await new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = () => reject(new Error('Não foi possível ler uma das fotos.'))
-    reader.readAsDataURL(file)
-  })
+  let source
+  let revokeUrl = null
 
-  const image = await new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error('Não foi possível processar uma das fotos.'))
-    img.src = dataUrl
-  })
+  try {
+    if ('createImageBitmap' in window) {
+      try {
+        source = await createImageBitmap(file)
+      } catch {
+        source = null
+      }
+    }
 
-  const maxSide = 1400
-  const scale = Math.min(1, maxSide / Math.max(image.width, image.height))
-  const width = Math.max(1, Math.round(image.width * scale))
-  const height = Math.max(1, Math.round(image.height * scale))
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
+    if (!source) {
+      const objectUrl = URL.createObjectURL(file)
+      revokeUrl = objectUrl
+      source = await new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = () => reject(new Error(
+          /\.(heic|heif)$/i.test(fileName)
+            ? 'Seu navegador não conseguiu abrir esta foto HEIC/HEIF. No iPhone, compartilhe/salve a imagem como JPEG ou PNG e tente novamente.'
+            : 'Não foi possível processar esta foto. Tente uma imagem JPG, PNG ou WebP.',
+        ))
+        img.src = objectUrl
+      })
+    }
 
-  const context = canvas.getContext('2d')
-  context.drawImage(image, 0, 0, width, height)
+    const originalWidth = Number(source.width || source.naturalWidth || 0)
+    const originalHeight = Number(source.height || source.naturalHeight || 0)
 
-  let quality = 0.84
-  let result = canvas.toDataURL('image/jpeg', quality)
+    if (!originalWidth || !originalHeight) {
+      throw new Error('Não foi possível identificar o tamanho da foto.')
+    }
 
-  while (result.length > MAX_IMAGE_LENGTH && quality > 0.42) {
-    quality -= 0.07
-    result = canvas.toDataURL('image/jpeg', quality)
+    const maxSide = 1600
+    const scale = Math.min(1, maxSide / Math.max(originalWidth, originalHeight))
+    const width = Math.max(1, Math.round(originalWidth * scale))
+    const height = Math.max(1, Math.round(originalHeight * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const context = canvas.getContext('2d')
+    context.drawImage(source, 0, 0, width, height)
+
+    let quality = 0.86
+    let result = canvas.toDataURL('image/jpeg', quality)
+
+    while (result.length > MAX_IMAGE_LENGTH && quality > 0.38) {
+      quality -= 0.06
+      result = canvas.toDataURL('image/jpeg', quality)
+    }
+
+    if (result.length > MAX_IMAGE_LENGTH) {
+      throw new Error('A foto ficou muito grande mesmo após a otimização. Escolha uma imagem menor.')
+    }
+
+    return result
+  } finally {
+    if (revokeUrl) URL.revokeObjectURL(revokeUrl)
+    if (source && typeof source.close === 'function') source.close()
   }
-
-  if (result.length > MAX_IMAGE_LENGTH) {
-    throw new Error('Uma das fotos ficou muito grande. Escolha uma imagem menor.')
-  }
-
-  return result
 }
 
 async function processSelectedImages(files, currentCount) {
@@ -733,7 +762,7 @@ function PostEditor({
         ref={fileInputRef}
         className="news-hidden-file"
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/*,.heic,.heif"
         multiple
         onChange={chooseImages}
       />
@@ -745,6 +774,20 @@ function PostEditor({
         accept="video/mp4,video/webm,video/quicktime"
         onChange={chooseVideo}
       />
+
+      <button
+        className="news-photo-dropzone"
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={processingImage || processingVideo || saving || imagens.length >= MAX_IMAGES || Boolean(video)}
+      >
+        <span className="news-photo-dropzone-icon">▣</span>
+        <div>
+          <strong>{imagens.length > 0 ? 'Adicionar mais fotos' : 'Adicionar fotos à publicação'}</strong>
+          <small>JPG, PNG, WebP e fotos do celular. Até {MAX_IMAGES} imagens.</small>
+        </div>
+        <em>{processingImage ? 'Processando...' : imagens.length > 0 ? `${imagens.length}/${MAX_IMAGES}` : 'Escolher'}</em>
+      </button>
 
       {imagens.length > 0 && (
         <div className={`news-preview-grid count-${imagens.length}`}>
