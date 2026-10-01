@@ -1,6 +1,7 @@
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
 import { ensureWmsTaskSchema } from '../_lib/wms-tasks.js'
+import { ensureOperatorTasksSchema } from '../_lib/operator-tasks.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -20,10 +21,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    await ensureWmsTaskSchema()
+    await Promise.all([
+      ensureWmsTaskSchema(),
+      ensureOperatorTasksSchema(),
+    ])
 
     const date = normalizeDate(req.query?.data)
     const key = String(req.query?.chave || '').trim()
+    const origin = String(req.query?.origem || 'empilhadeira').trim().toLowerCase()
 
     if (!date || !key) {
       return res.status(400).json({
@@ -32,25 +37,45 @@ export default async function handler(req, res) {
       })
     }
 
-    const rows = await sql`
-      SELECT
-        wms_task_id,
-        data_ref,
-        documento,
-        origem,
-        destino,
-        palete,
-        tipo_nome,
-        tarefa,
-        prioridade,
-        valor_unitario
-      FROM wms_tarefas_registros
-      WHERE usuario_id = ${usuario.id}
-        AND data_ref = ${date}::date
-        AND tipo_chave = ${key}
-      ORDER BY wms_task_id
-      LIMIT 500
-    `
+    const rows = origin === 'operador'
+      ? await sql`
+          SELECT
+            wms_task_id,
+            data_ref,
+            documento,
+            origem,
+            destino,
+            palete,
+            tipo_nome,
+            tarefa,
+            prioridade,
+            valor_unitario
+          FROM wms_operador_tarefas
+          WHERE usuario_id = ${usuario.id}
+            AND data_ref = ${date}::date
+            AND tipo_chave = ${key}
+          ORDER BY wms_task_id
+          LIMIT 500
+        `
+      : await sql`
+          SELECT
+            wms_task_id,
+            data_ref,
+            documento,
+            origem,
+            destino,
+            palete,
+            tipo_nome,
+            tarefa,
+            prioridade,
+            valor_unitario
+          FROM wms_tarefas_registros
+          WHERE usuario_id = ${usuario.id}
+            AND data_ref = ${date}::date
+            AND tipo_chave = ${key}
+          ORDER BY wms_task_id
+          LIMIT 500
+        `
 
     const total = rows.reduce(
       (sum, row) => sum + Number(row.valor_unitario || 0),
@@ -59,6 +84,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       status: 'ok',
+      origem: origin,
       data: date,
       tipo: rows[0]?.tipo_nome || key,
       quantidade: rows.length,
