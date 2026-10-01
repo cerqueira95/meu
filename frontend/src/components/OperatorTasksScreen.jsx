@@ -93,8 +93,8 @@ export default function OperatorTasksScreen() {
   })
 
   return (
-    <section style={styles.page}>
-      <div style={styles.hero}>
+    <section className="operator-tasks-page" style={styles.page}>
+      <div className="operator-tasks-hero" style={styles.hero}>
         <div>
           <span className="dashboard-kicker">WMS • OPERADORES</span>
           <h1 style={styles.title}>Tarefas dos operadores</h1>
@@ -104,12 +104,12 @@ export default function OperatorTasksScreen() {
         </div>
       </div>
 
-      <form style={styles.filter} onSubmit={applyPeriod}>
-        <label style={styles.field}>
+      <form className="operator-tasks-filter" style={styles.filter} onSubmit={applyPeriod}>
+        <label className="operator-tasks-field" style={styles.field}>
           <span>Data inicial</span>
           <input style={styles.input} type="date" value={from} max={today} onChange={(event) => setFrom(event.target.value)} />
         </label>
-        <label style={styles.field}>
+        <label className="operator-tasks-field" style={styles.field}>
           <span>Data final</span>
           <input style={styles.input} type="date" value={to} max={today} onChange={(event) => setTo(event.target.value)} />
         </label>
@@ -124,7 +124,7 @@ export default function OperatorTasksScreen() {
       {error && <div className="activity-message error">{error}</div>}
       {message && <div className="activity-message success">{message}</div>}
 
-      <div style={styles.cards}>
+      <div className="operator-tasks-cards" style={styles.cards}>
         <article style={styles.card}>
           <span>TAREFAS</span>
           <strong>{number(data.resumo?.tarefas)}</strong>
@@ -147,13 +147,14 @@ export default function OperatorTasksScreen() {
         </article>
       </div>
 
-      <section style={styles.panel}>
-        <div style={styles.panelHead}>
+      <section className="operator-tasks-panel" style={styles.panel}>
+        <div className="operator-tasks-panel-head" style={styles.panelHead}>
           <div>
             <span className="dashboard-kicker">RESUMO</span>
             <h2 style={styles.panelTitle}>Produção por operador</h2>
           </div>
           <input
+            className="operator-tasks-search"
             style={styles.search}
             type="search"
             value={query}
@@ -167,7 +168,7 @@ export default function OperatorTasksScreen() {
         ) : rows.length === 0 ? (
           <div style={styles.empty}>Nenhuma tarefa de operador encontrada no período.</div>
         ) : (
-          <div style={styles.tableWrap}>
+          <div className="operator-tasks-table-wrap" style={styles.tableWrap}>
             <table style={styles.table}>
               <thead>
                 <tr>
@@ -194,8 +195,8 @@ export default function OperatorTasksScreen() {
         )}
       </section>
 
-      <section style={styles.panel}>
-        <div style={styles.panelHead}>
+      <section className="operator-tasks-panel" style={styles.panel}>
+        <div className="operator-tasks-panel-head" style={styles.panelHead}>
           <div>
             <span className="dashboard-kicker">DETALHAMENTO</span>
             <h2 style={styles.panelTitle}>Tarefas importadas</h2>
@@ -206,7 +207,7 @@ export default function OperatorTasksScreen() {
         {!data.tarefas?.length ? (
           <div style={styles.empty}>Sem tarefas detalhadas no período.</div>
         ) : (
-          <div style={styles.tableWrap}>
+          <div className="operator-tasks-table-wrap" style={styles.tableWrap}>
             <table style={{ ...styles.table, minWidth: 1050 }}>
               <thead>
                 <tr>
