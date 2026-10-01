@@ -16,6 +16,7 @@ import ChangePasswordScreen from './components/ChangePasswordScreen.jsx'
 import RemunerationAdminScreen from './components/RemunerationAdminScreen.jsx'
 import OperatorTasksScreen from './components/OperatorTasksScreen.jsx'
 import AccessAnalyticsScreen from './components/AccessAnalyticsScreen.jsx'
+import PickingStudioScreen from './components/PickingStudioScreen.jsx'
 import './components/DashboardHighlights.css'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
@@ -1505,6 +1506,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     ...(isAdmin ? [{ id: 'gestao-remuneracao', label: integrationAlertCount > 0 ? `Gestão remuneração (${integrationAlertCount})` : 'Gestão remuneração', icon: 'relatorios' }] : []),
     ...(isAdmin ? [{ id: 'tarefas-operadores', label: 'Tarefas operadores', icon: 'relatorios' }] : []),
     ...(isAdmin ? [{ id: 'acessos-time', label: 'Acessos do time', icon: 'usuarios' }] : []),
+    ...(isAdmin ? [{ id: 'picking-studio', label: 'Picking Studio', icon: 'relatorios' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     { id: 'alterar-senha', label: 'Alterar senha', icon: 'configuracoes' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
@@ -1590,6 +1592,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     'gestao-remuneracao': { title: 'Gestão remuneração', description: 'Painel, fechamento, integrações e auditoria.', icon: 'relatorios' },
     'tarefas-operadores': { title: 'Tarefas operadores', description: 'Consulta e atualização manual das tarefas concluídas dos operadores.', icon: 'relatorios' },
     'acessos-time': { title: 'Acessos do time', description: 'Acompanhe o uso diário da ferramenta pela equipe.', icon: 'usuarios' },
+    'picking-studio': { title: 'Picking Studio', description: 'Simule o slotting do picking com TC fixa e histórico WMS.', icon: 'relatorios' },
     'alterar-senha': { title: 'Alterar senha', description: 'Atualize sua senha de acesso com segurança.', icon: 'configuracoes' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
@@ -1948,6 +1951,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <OperatorTasksScreen />
           ) : activeSection === 'acessos-time' && isAdmin ? (
             <AccessAnalyticsScreen />
+          ) : activeSection === 'picking-studio' && isAdmin ? (
+            <PickingStudioScreen />
           ) : activeSection === 'destaques' ? (
             <HighlightsScreen />
           ) : activeSection === 'gerenciar-destaques' && isAdmin ? (
