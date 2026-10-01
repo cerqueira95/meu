@@ -6538,3 +6538,23 @@ body,
     font-size: 30px;
   }
 }
+
+
+/* Links clicáveis no Armazém New */
+.news-post-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.news-inline-link {
+  color: #155eef;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+
+.news-inline-link:hover {
+  color: #1849a9;
+}
