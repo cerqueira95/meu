@@ -15,6 +15,7 @@ import HighlightsScreen from './components/HighlightsScreen.jsx'
 import ChangePasswordScreen from './components/ChangePasswordScreen.jsx'
 import RemunerationAdminScreen from './components/RemunerationAdminScreen.jsx'
 import OperatorTasksScreen from './components/OperatorTasksScreen.jsx'
+import AccessAnalyticsScreen from './components/AccessAnalyticsScreen.jsx'
 import './components/DashboardHighlights.css'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
@@ -1503,6 +1504,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     ...(isAdmin ? [{ id: 'tetos-carteira', label: 'Tetos da carteira', icon: 'carteira' }] : []),
     ...(isAdmin ? [{ id: 'gestao-remuneracao', label: integrationAlertCount > 0 ? `Gestão remuneração (${integrationAlertCount})` : 'Gestão remuneração', icon: 'relatorios' }] : []),
     ...(isAdmin ? [{ id: 'tarefas-operadores', label: 'Tarefas operadores', icon: 'relatorios' }] : []),
+    ...(isAdmin ? [{ id: 'acessos-time', label: 'Acessos do time', icon: 'usuarios' }] : []),
     { id: 'escalonada', label: 'Minha Escalonada', icon: 'escalonada' },
     { id: 'alterar-senha', label: 'Alterar senha', icon: 'configuracoes' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
@@ -1587,6 +1589,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     'tetos-carteira': { title: 'Tetos da carteira', description: 'Limite mensal individual dos ajudantes.', icon: 'carteira' },
     'gestao-remuneracao': { title: 'Gestão remuneração', description: 'Painel, fechamento, integrações e auditoria.', icon: 'relatorios' },
     'tarefas-operadores': { title: 'Tarefas operadores', description: 'Consulta e atualização manual das tarefas concluídas dos operadores.', icon: 'relatorios' },
+    'acessos-time': { title: 'Acessos do time', description: 'Acompanhe o uso diário da ferramenta pela equipe.', icon: 'usuarios' },
     'alterar-senha': { title: 'Alterar senha', description: 'Atualize sua senha de acesso com segurança.', icon: 'configuracoes' },
     configuracoes: { title: 'Configurações', description: 'Preferências e parâmetros do sistema.', icon: 'configuracoes' },
   }
@@ -1943,6 +1946,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <RemunerationAdminScreen />
           ) : activeSection === 'tarefas-operadores' && isAdmin ? (
             <OperatorTasksScreen />
+          ) : activeSection === 'acessos-time' && isAdmin ? (
+            <AccessAnalyticsScreen />
           ) : activeSection === 'destaques' ? (
             <HighlightsScreen />
           ) : activeSection === 'gerenciar-destaques' && isAdmin ? (
@@ -1979,6 +1984,23 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 export default function App() {
   const [loadingSession, setLoadingSession] = useState(true)
   const [usuario, setUsuario] = useState(null)
+
+  useEffect(() => {
+    if (!usuario?.id) return
+
+    const key = 'warehouse_access_registered_' + usuario.id
+
+    try {
+      if (window.sessionStorage.getItem(key) === '1') return
+      window.sessionStorage.setItem(key, '1')
+    } catch {
+      // Se o navegador bloquear sessionStorage, registra normalmente.
+    }
+
+    api.post('/api/analytics/access', { origem: 'app' }).catch(() => {
+      // Métrica de acesso nunca deve bloquear o uso do sistema.
+    })
+  }, [usuario?.id])
 
   useEffect(() => {
     let active = true
