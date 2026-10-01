@@ -595,7 +595,7 @@ function DashboardHome({ usuario, onNavigate }) {
   const firstName = String(usuario.nome || 'Usuário').trim().split(' ')[0]
   const profile = String(usuario.perfil || '').toUpperCase()
   const canUseActivities = profile === 'AJUDANTE' || profile === 'ADM'
-  const canUseWallet = profile === 'AJUDANTE' || profile === 'ADM'
+  const canUseWallet = ['AJUDANTE', 'ADM', 'OPERADOR'].includes(profile)
   const [dashboardHighlights, setDashboardHighlights] = useState([])
 
   useEffect(() => {
@@ -1489,8 +1489,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
 
   const isAdmin = String(usuario.perfil || '').toUpperCase() === 'ADM'
   const canUseActivities = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase())
-  const canUseWallet = ['ADM', 'AJUDANTE'].includes(String(usuario.perfil || '').toUpperCase()) ||
-    String(usuario.cargo || '').trim().toUpperCase() === 'EMPILHADEIRA'
+  const canUseWallet = ['ADM', 'AJUDANTE', 'OPERADOR'].includes(String(usuario.perfil || '').toUpperCase()) ||
+    ['EMPILHADEIRA', 'OPERADOR'].includes(String(usuario.cargo || '').trim().toUpperCase())
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
     { id: 'news', label: 'Armazém New', icon: 'news' },
