@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api.js'
+import './OperatorTasksScreen.css'
 
 function localIsoDate() {
   const date = new Date()
@@ -15,12 +16,6 @@ function money(value) {
     style: 'currency',
     currency: 'BRL',
   })
-}
-
-function dateLabel(value) {
-  const text = String(value || '').slice(0, 10)
-  const [year, month, day] = text.split('-')
-  return year && month && day ? `${day}/${month}/${year}` : text
 }
 
 export default function OperatorTasksScreen() {
@@ -42,7 +37,9 @@ export default function OperatorTasksScreen() {
     setLoading(true)
     setError('')
     try {
-      const result = await api.get(`/api/operator-tasks?from=${encodeURIComponent(start)}&to=${encodeURIComponent(end)}`)
+      const result = await api.get(
+        `/api/operator-tasks?from=${encodeURIComponent(start)}&to=${encodeURIComponent(end)}`,
+      )
       setData(result)
     } catch (requestError) {
       setError(requestError.message)
@@ -53,14 +50,17 @@ export default function OperatorTasksScreen() {
 
   async function applyPeriod(event) {
     event?.preventDefault()
+
     if (!from || !to) {
       setError('Selecione a data inicial e final.')
       return
     }
+
     if (from > to) {
       setError('A data inicial não pode ser maior que a final.')
       return
     }
+
     await loadReport()
   }
 
@@ -88,35 +88,53 @@ export default function OperatorTasksScreen() {
   const rows = (data.agrupado || []).filter((row) => {
     const text = query.trim().toLocaleLowerCase('pt-BR')
     if (!text) return true
-    return String(row.usuario_nome || '').toLocaleLowerCase('pt-BR').includes(text) ||
+
+    return (
+      String(row.usuario_nome || '').toLocaleLowerCase('pt-BR').includes(text) ||
       String(row.tipo_nome || '').toLocaleLowerCase('pt-BR').includes(text)
+    )
   })
 
   return (
-    <section className="operator-tasks-page" style={styles.page}>
-      <div className="operator-tasks-hero" style={styles.hero}>
+    <section className="operator-tasks-page">
+      <div className="operator-tasks-hero">
         <div>
           <span className="dashboard-kicker">WMS • OPERADORES</span>
-          <h1 style={styles.title}>Tarefas dos operadores</h1>
-          <p style={styles.subtitle}>
-            Consulte a produção dos operadores por atividade. A atualização manual usa o ID da tarefa no banco para evitar duplicidade, mas a tela mostra apenas quantidade e valor por atividade.
+          <h1>Tarefas dos operadores</h1>
+          <p>
+            Consulte a produção dos operadores por atividade. A atualização manual usa
+            o ID da tarefa no banco para evitar duplicidade, enquanto a tela mostra
+            somente quantidade e valor por atividade.
           </p>
         </div>
       </div>
 
-      <form className="operator-tasks-filter" style={styles.filter} onSubmit={applyPeriod}>
-        <label className="operator-tasks-field" style={styles.field}>
+      <form className="operator-tasks-filter" onSubmit={applyPeriod}>
+        <label className="operator-tasks-field">
           <span>Data inicial</span>
-          <input style={styles.input} type="date" value={from} max={today} onChange={(event) => setFrom(event.target.value)} />
+          <input
+            type="date"
+            value={from}
+            max={today}
+            onChange={(event) => setFrom(event.target.value)}
+          />
         </label>
-        <label className="operator-tasks-field" style={styles.field}>
+
+        <label className="operator-tasks-field">
           <span>Data final</span>
-          <input style={styles.input} type="date" value={to} max={today} onChange={(event) => setTo(event.target.value)} />
+          <input
+            type="date"
+            value={to}
+            max={today}
+            onChange={(event) => setTo(event.target.value)}
+          />
         </label>
-        <button style={styles.primary} type="submit" disabled={loading || running}>
+
+        <button type="submit" disabled={loading || running}>
           {loading ? 'Carregando...' : 'Aplicar período'}
         </button>
-        <button style={styles.manual} type="button" onClick={runSelectedDate} disabled={loading || running}>
+
+        <button type="button" onClick={runSelectedDate} disabled={loading || running}>
           {running ? 'Puxando WMS...' : 'Puxar tarefas da data'}
         </button>
       </form>
@@ -124,69 +142,74 @@ export default function OperatorTasksScreen() {
       {error && <div className="activity-message error">{error}</div>}
       {message && <div className="activity-message success">{message}</div>}
 
-      <div className="operator-tasks-cards" style={styles.cards}>
-        <article style={styles.card}>
+      <div className="operator-tasks-cards">
+        <article>
           <span>TAREFAS</span>
           <strong>{number(data.resumo?.tarefas)}</strong>
           <small>tarefas concluídas vinculadas</small>
         </article>
-        <article style={styles.card}>
+
+        <article>
           <span>OPERADORES</span>
           <strong>{number(data.resumo?.operadores)}</strong>
           <small>operadores com produção</small>
         </article>
-        <article style={styles.card}>
+
+        <article>
           <span>TIPOS</span>
           <strong>{number(data.resumo?.tipos)}</strong>
           <small>tipos diferentes de tarefa</small>
         </article>
-        <article style={styles.card}>
+
+        <article>
           <span>VALOR CALCULADO</span>
           <strong>{money(data.resumo?.valor)}</strong>
           <small>valor que entra na carteira dos operadores</small>
         </article>
       </div>
 
-      <section className="operator-tasks-panel" style={styles.panel}>
-        <div className="operator-tasks-panel-head" style={styles.panelHead}>
+      <section className="operator-tasks-panel">
+        <div className="operator-tasks-panel-head">
           <div>
             <span className="dashboard-kicker">RESUMO</span>
-            <h2 style={styles.panelTitle}>Produção por operador</h2>
+            <h2>Produção por operador</h2>
           </div>
+
           <input
             className="operator-tasks-search"
-            style={styles.search}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar operador ou tipo"
+            placeholder="Buscar operador ou atividade"
           />
         </div>
 
         {loading ? (
-          <div style={styles.empty}>Carregando tarefas...</div>
+          <div className="operator-tasks-empty">Carregando tarefas...</div>
         ) : rows.length === 0 ? (
-          <div style={styles.empty}>Nenhuma tarefa de operador encontrada no período.</div>
+          <div className="operator-tasks-empty">
+            Nenhuma tarefa de operador encontrada no período.
+          </div>
         ) : (
-          <div className="operator-tasks-table-wrap" style={styles.tableWrap}>
-            <table style={styles.table}>
+          <div className="operator-tasks-table-wrap">
+            <table className="operator-tasks-table">
               <thead>
                 <tr>
-                  <th style={styles.th}>Operador</th>
-                  <th style={styles.th}>Tipo da tarefa</th>
-                  <th style={styles.th}>Quantidade</th>
-                  <th style={styles.th}>Valor unitário</th>
-                  <th style={styles.th}>Total</th>
+                  <th>Operador</th>
+                  <th>Atividade</th>
+                  <th>Quantidade</th>
+                  <th>Valor unitário</th>
+                  <th>Total</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={`${row.usuario_id}-${row.tipo_nome}`}>
-                    <td style={styles.td}><strong>{row.usuario_nome}</strong></td>
-                    <td style={styles.td}>{row.tipo_nome}</td>
-                    <td style={styles.td}><strong>{number(row.quantidade)}</strong></td>
-                    <td style={styles.td}>{money(row.valor_unitario)}</td>
-                    <td style={styles.td}><strong>{money(row.valor)}</strong></td>
+                    <td><strong>{row.usuario_nome}</strong></td>
+                    <td>{row.tipo_nome}</td>
+                    <td><strong>{number(row.quantidade)}</strong></td>
+                    <td>{money(row.valor_unitario)}</td>
+                    <td><strong>{money(row.valor)}</strong></td>
                   </tr>
                 ))}
               </tbody>
@@ -194,32 +217,6 @@ export default function OperatorTasksScreen() {
           </div>
         )}
       </section>
-
-
     </section>
   )
-}
-
-const styles = {
-  page: { display: 'grid', gap: 18 },
-  hero: { display: 'flex', justifyContent: 'space-between', gap: 18 },
-  title: { margin: '6px 0', color: '#102a4d', fontSize: 'clamp(30px, 4vw, 44px)' },
-  subtitle: { margin: 0, color: '#718096', lineHeight: 1.6 },
-  filter: { display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 10, padding: 16, border: '1px solid #dfe6ee', borderRadius: 17, background: '#fff' },
-  field: { display: 'grid', gap: 6, color: '#667085', fontSize: 11, fontWeight: 800 },
-  input: { minHeight: 42, border: '1px solid #d7e0ea', borderRadius: 10, padding: '0 11px', background: '#fff' },
-  primary: { minHeight: 42, border: 0, borderRadius: 10, padding: '0 16px', background: '#ffb000', color: '#172235', fontWeight: 900 },
-  manual: { minHeight: 42, border: '1px solid #155eef', borderRadius: 10, padding: '0 16px', background: '#eef4ff', color: '#1849a9', fontWeight: 900 },
-  cards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 },
-  card: { display: 'grid', gap: 6, padding: 17, border: '1px solid #dfe6ee', borderRadius: 17, background: '#fff' },
-  panel: { border: '1px solid #dfe6ee', borderRadius: 18, background: '#fff', overflow: 'hidden' },
-  panelHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 16, borderBottom: '1px solid #edf1f5' },
-  panelTitle: { margin: 0, color: '#172b46', fontSize: 19 },
-  search: { width: 260, maxWidth: '50vw', minHeight: 38, border: '1px solid #d7e0ea', borderRadius: 10, padding: '0 11px' },
-  pill: { padding: '6px 9px', borderRadius: 999, background: '#f3f6f9', color: '#667085', fontSize: 10, fontWeight: 800 },
-  tableWrap: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: { padding: '11px 13px', textAlign: 'left', background: '#f8fafc', color: '#8b97a9', fontSize: 9, whiteSpace: 'nowrap' },
-  td: { padding: '11px 13px', borderTop: '1px solid #edf1f5', color: '#344054', fontSize: 11, whiteSpace: 'nowrap' },
-  empty: { padding: 32, color: '#7f8b9d', textAlign: 'center' },
 }
