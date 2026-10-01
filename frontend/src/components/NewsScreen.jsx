@@ -611,10 +611,12 @@ function PostEditor({
   const [error, setError] = useState('')
 
   async function chooseImages(event) {
-    const files = event.target.files
+    // Copia os arquivos antes de limpar o input. FileList é "vivo" em alguns
+    // navegadores e era zerado junto com event.target.value.
+    const files = Array.from(event.target.files || [])
     event.target.value = ''
 
-    if (!files?.length) return
+    if (files.length === 0) return
 
     if (video) {
       setError('Remova o vídeo antes de adicionar fotos.')
