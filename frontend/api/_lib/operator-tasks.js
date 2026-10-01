@@ -264,7 +264,7 @@ export async function saveOperatorTasks({ date, rows }) {
 export async function getOperatorTasksReport(from, to) {
   await ensureOperatorTasksSchema()
 
-  const [summaryRows, groupedRows, detailRows] = await Promise.all([
+  const [summaryRows, groupedRows] = await Promise.all([
     sql`
       SELECT
         COUNT(*)::int AS tarefas,
@@ -288,27 +288,6 @@ export async function getOperatorTasksReport(from, to) {
       GROUP BY usuario_id, usuario_nome, tipo_nome, tipo_chave, valor_unitario
       ORDER BY usuario_nome, quantidade DESC, tipo_nome
     `,
-    sql`
-      SELECT
-        wms_task_id,
-        data_ref,
-        usuario_id,
-        usuario_nome,
-        tipo_nome,
-        tipo_chave,
-        documento,
-        origem,
-        destino,
-        palete,
-        tarefa,
-        prioridade,
-        data_criacao,
-        valor_unitario
-      FROM wms_operador_tarefas
-      WHERE data_ref BETWEEN ${from}::date AND ${to}::date
-      ORDER BY data_ref DESC, usuario_nome, tipo_nome, wms_task_id
-      LIMIT 5000
-    `,
   ])
 
   const summary = summaryRows[0] || {}
@@ -328,11 +307,6 @@ export async function getOperatorTasksReport(from, to) {
       valor_unitario: Number(row.valor_unitario || 0),
       quantidade: Number(row.quantidade || 0),
       valor: Number(row.valor || 0),
-    })),
-    tarefas: detailRows.map((row) => ({
-      ...row,
-      usuario_id: Number(row.usuario_id),
-      valor_unitario: Number(row.valor_unitario || 0),
     })),
   }
 }
