@@ -7,6 +7,7 @@ import {
   roundMoney,
 } from './wallet.js'
 import { ensureWmsTaskSchema } from './wms-tasks.js'
+import { ensureOperatorTasksSchema } from './operator-tasks.js'
 
 let remunerationAdminSchemaPromise = null
 
@@ -321,6 +322,7 @@ export async function getWalletData(userId, month) {
       totais: {
         valor_wms: 0,
         tarefas_wms: 0,
+        tarefas_operador: 0,
         escalonada: 0,
         atividades: 0,
         bruto: 0,
@@ -351,6 +353,7 @@ export async function buildLiveWalletData(userId, month) {
   await Promise.all([
     ensureWalletSchema(),
     ensureWmsTaskSchema(),
+    ensureOperatorTasksSchema(),
   ])
 
   const normalized = resolveMonth(month)
@@ -369,7 +372,7 @@ export async function buildLiveWalletData(userId, month) {
     throw error
   }
 
-  const [capRows, wmsRows, taskRows, escalonadaRows, activityRows] = await Promise.all([
+  const [capRows, wmsRows, taskRows, operatorTaskRows, escalonadaRows, activityRows] = await Promise.all([
     sql`
       SELECT valor_teto
       FROM remuneracao_tetos
@@ -397,6 +400,18 @@ export async function buildLiveWalletData(userId, month) {
         COUNT(*)::int AS quantidade,
         COALESCE(SUM(valor_unitario), 0)::numeric AS valor
       FROM wms_tarefas_registros
+      WHERE usuario_id = ${user.id}
+        AND data_ref >= ${start}::date
+        AND data_ref < ${endExclusive}::date
+      GROUP BY data_ref, tipo_chave, tipo_nome, valor_unitario
+      ORDER BY data_ref, tipo_nome
+    `,
+    sql`
+      SELECT
+        data_ref, tipo_chave, tipo_nome, valor_unitario,
+        COUNT(*)::int AS quantidade,
+        COALESCE(SUM(valor_unitario), 0)::numeric AS valor
+      FROM wms_operador_tarefas
       WHERE usuario_id = ${user.id}
         AND data_ref >= ${start}::date
         AND data_ref < ${endExclusive}::date
@@ -463,6 +478,24 @@ export async function buildLiveWalletData(userId, month) {
     })
   }
 
+  for (const row of operatorTaskRows) {
+    const quantity = Number(row.quantidade || 0)
+    const unitValue = Number(row.valor_unitario || 0)
+    const date = isoDate(row.data_ref)
+
+    entries.push({
+      id: `operador-tarefa-${date}-${row.tipo_chave}-${unitValue}`,
+      data: date,
+      tipo: 'operador_tarefa',
+      titulo: row.tipo_nome,
+      detalhe: `${quantity} ${quantity === 1 ? 'tarefa de operador' : 'tarefas de operador'} • ${moneyBr(unitValue)} cada`,
+      tarefa_chave: row.tipo_chave,
+      quantidade: quantity,
+      valor_unitario: unitValue,
+      valor_original: Number(row.valor || 0),
+    })
+  }
+
   for (const row of escalonadaRows) {
     const date = isoDate(row.data_ref)
     entries.push({
@@ -495,7 +528,7 @@ export async function buildLiveWalletData(userId, month) {
   entries.sort((a, b) => {
     const dateCompare = String(a.data).localeCompare(String(b.data))
     if (dateCompare !== 0) return dateCompare
-    const priority = { wms: 1, wms_tarefa: 2, escalonada: 3, atividade: 4 }
+    const priority = { wms: 1, wms_tarefa: 2, operador_tarefa: 3, escalonada: 4, atividade: 5 }
     return (priority[a.tipo] || 9) - (priority[b.tipo] || 9)
   })
 
@@ -503,9 +536,10 @@ export async function buildLiveWalletData(userId, month) {
   const extract = applyWalletCap(entries, cap)
   const totalWms = roundMoney(entries.filter((e) => e.tipo === 'wms').reduce((s, e) => s + Number(e.valor_original || 0), 0))
   const totalWmsTasks = roundMoney(entries.filter((e) => e.tipo === 'wms_tarefa').reduce((s, e) => s + Number(e.valor_original || 0), 0))
+  const totalOperatorTasks = roundMoney(entries.filter((e) => e.tipo === 'operador_tarefa').reduce((s, e) => s + Number(e.valor_original || 0), 0))
   const totalEscalonada = roundMoney(entries.filter((e) => e.tipo === 'escalonada').reduce((s, e) => s + Number(e.valor_original || 0), 0))
   const totalActivities = roundMoney(entries.filter((e) => e.tipo === 'atividade').reduce((s, e) => s + Number(e.valor_original || 0), 0))
-  const bruto = roundMoney(totalWms + totalWmsTasks + totalEscalonada + totalActivities)
+  const bruto = roundMoney(totalWms + totalWmsTasks + totalOperatorTasks + totalEscalonada + totalActivities)
   const saldo = roundMoney(extract.reduce((s, e) => s + Number(e.valor_creditado || 0), 0))
 
   return {
@@ -527,6 +561,7 @@ export async function buildLiveWalletData(userId, month) {
     totais: {
       valor_wms: totalWms,
       tarefas_wms: totalWmsTasks,
+      tarefas_operador: totalOperatorTasks,
       escalonada: totalEscalonada,
       atividades: totalActivities,
       bruto,
@@ -567,6 +602,7 @@ export async function buildAdminDashboard(month) {
     saldo: 0,
     valor_wms: 0,
     tarefas_wms: 0,
+    tarefas_operador: 0,
     escalonada: 0,
     atividades: 0,
     bloqueado_teto: 0,
@@ -574,7 +610,7 @@ export async function buildAdminDashboard(month) {
   }
 
   for (const wallet of wallets) {
-    for (const key of ['bruto', 'saldo', 'valor_wms', 'tarefas_wms', 'escalonada', 'atividades', 'bloqueado_teto']) {
+    for (const key of ['bruto', 'saldo', 'valor_wms', 'tarefas_wms', 'tarefas_operador', 'escalonada', 'atividades', 'bloqueado_teto']) {
       resumo[key] = roundMoney(resumo[key] + Number(wallet.totais?.[key] || 0))
     }
     if (wallet.teto?.atingido) resumo.atingiram_teto += 1
@@ -602,6 +638,7 @@ export async function buildAdminDashboard(month) {
       atingiu_teto: wallet.teto.atingido,
       valor_wms: wallet.totais.valor_wms,
       tarefas_wms: wallet.totais.tarefas_wms,
+      tarefas_operador: wallet.totais.tarefas_operador,
       escalonada: wallet.totais.escalonada,
       atividades: wallet.totais.atividades,
     }))
