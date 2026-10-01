@@ -27,7 +27,7 @@ export default function OperatorTasksScreen() {
   const today = useMemo(() => localIsoDate(), [])
   const [from, setFrom] = useState(today)
   const [to, setTo] = useState(today)
-  const [data, setData] = useState({ resumo: {}, agrupado: [], tarefas: [] })
+  const [data, setData] = useState({ resumo: {}, agrupado: [] })
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [query, setQuery] = useState('')
@@ -99,7 +99,7 @@ export default function OperatorTasksScreen() {
           <span className="dashboard-kicker">WMS • OPERADORES</span>
           <h1 style={styles.title}>Tarefas dos operadores</h1>
           <p style={styles.subtitle}>
-            Consulte tarefas concluídas do Monitorar Tarefas. A atualização manual usa o ID da tarefa e nunca duplica registros.
+            Consulte a produção dos operadores por atividade. A atualização manual usa o ID da tarefa no banco para evitar duplicidade, mas a tela mostra apenas quantidade e valor por atividade.
           </p>
         </div>
       </div>
@@ -195,52 +195,7 @@ export default function OperatorTasksScreen() {
         )}
       </section>
 
-      <section className="operator-tasks-panel" style={styles.panel}>
-        <div className="operator-tasks-panel-head" style={styles.panelHead}>
-          <div>
-            <span className="dashboard-kicker">DETALHAMENTO</span>
-            <h2 style={styles.panelTitle}>Tarefas importadas</h2>
-          </div>
-          <span style={styles.pill}>{number(data.tarefas?.length)} registros</span>
-        </div>
 
-        {!data.tarefas?.length ? (
-          <div style={styles.empty}>Sem tarefas detalhadas no período.</div>
-        ) : (
-          <div className="operator-tasks-table-wrap" style={styles.tableWrap}>
-            <table style={{ ...styles.table, minWidth: 1050 }}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Data</th>
-                  <th style={styles.th}>Operador</th>
-                  <th style={styles.th}>Tipo</th>
-                  <th style={styles.th}>Documento</th>
-                  <th style={styles.th}>Origem</th>
-                  <th style={styles.th}>Destino</th>
-                  <th style={styles.th}>Palete</th>
-                  <th style={styles.th}>Valor</th>
-                  <th style={styles.th}>ID WMS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.tarefas.map((task) => (
-                  <tr key={task.wms_task_id}>
-                    <td style={styles.td}>{dateLabel(task.data_ref)}</td>
-                    <td style={styles.td}><strong>{task.usuario_nome}</strong></td>
-                    <td style={styles.td}>{task.tipo_nome}</td>
-                    <td style={styles.td}>{task.documento || '-'}</td>
-                    <td style={styles.td}>{task.origem || '-'}</td>
-                    <td style={styles.td}>{task.destino || '-'}</td>
-                    <td style={styles.td}>{task.palete || '-'}</td>
-                    <td style={styles.td}><strong>{money(task.valor_unitario)}</strong></td>
-                    <td style={styles.td}>{task.wms_task_id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </section>
   )
 }
