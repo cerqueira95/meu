@@ -21,6 +21,7 @@ function currentMonth() {
 function entryIcon(item) {
   if (item.tipo === 'wms') return 'W'
   if (item.tipo === 'wms_tarefa') return 'T'
+  if (item.tipo === 'operador_tarefa') return 'O'
   if (item.tipo === 'escalonada') return 'E'
   return 'A'
 }
@@ -53,7 +54,7 @@ export default function WalletScreen() {
   }
 
   async function toggleTaskDetails(item) {
-    if (item.tipo !== 'wms_tarefa') return
+    if (!['wms_tarefa', 'operador_tarefa'].includes(item.tipo)) return
 
     if (expandedId === item.id) {
       setExpandedId('')
@@ -69,7 +70,7 @@ export default function WalletScreen() {
 
     try {
       const result = await api.get(
-        `/api/wallet/task-details?data=${encodeURIComponent(String(item.data).slice(0, 10))}&chave=${encodeURIComponent(item.tarefa_chave)}`,
+        `/api/wallet/task-details?data=${encodeURIComponent(String(item.data).slice(0, 10))}&chave=${encodeURIComponent(item.tarefa_chave)}&origem=${item.tipo === 'operador_tarefa' ? 'operador' : 'empilhadeira'}`,
       )
       setDetails((current) => ({ ...current, [item.id]: result }))
     } catch (requestError) {
@@ -90,7 +91,7 @@ export default function WalletScreen() {
         <div>
           <span className="dashboard-kicker">REMUNERAÇÃO VARIÁVEL</span>
           <h1>Minha carteira</h1>
-          <p>Acompanhe o Valor WMS, tarefas WMS, escalonada, atividades e seu limite mensal.</p>
+          <p>Acompanhe o Valor WMS, tarefas WMS, tarefas de operador, escalonada, atividades e seu limite mensal.</p>
         </div>
         <label className="wallet-month">
           <span>Mês</span>
@@ -139,6 +140,11 @@ export default function WalletScreen() {
               <small>Tarefas concluídas do Monitorar Tarefas</small>
             </article>
             <article>
+              <span>Tarefas Operador</span>
+              <strong>{money(data.totais?.tarefas_operador)}</strong>
+              <small>Tarefas concluídas vinculadas ao operador</small>
+            </article>
+            <article>
               <span>Escalonada</span>
               <strong>{money(data.totais?.escalonada)}</strong>
               <small>Somente o incentivo adicional</small>
@@ -167,7 +173,7 @@ export default function WalletScreen() {
                 const expanded = expandedId === item.id
                 return (
                   <div className="wallet-entry-block" key={item.id}>
-                    <article className={item.tipo === 'wms_tarefa' ? 'wallet-entry-clickable' : ''}>
+                    <article className={['wms_tarefa', 'operador_tarefa'].includes(item.tipo) ? 'wallet-entry-clickable' : ''}>
                       <div className={`wallet-entry-icon ${item.tipo}`}>
                         {entryIcon(item)}
                       </div>
@@ -175,7 +181,7 @@ export default function WalletScreen() {
                         <strong>{item.titulo}</strong>
                         <span>{item.detalhe}</span>
                         <small>{formatDate(item.data)}</small>
-                        {item.tipo === 'wms_tarefa' && (
+                        {['wms_tarefa', 'operador_tarefa'].includes(item.tipo) && (
                           <button
                             className="wallet-detail-button"
                             type="button"
@@ -193,7 +199,7 @@ export default function WalletScreen() {
                       </div>
                     </article>
 
-                    {item.tipo === 'wms_tarefa' && expanded && (
+                    {['wms_tarefa', 'operador_tarefa'].includes(item.tipo) && expanded && (
                       <div className="wallet-task-details">
                         {detailsLoading === item.id ? (
                           <span>Carregando detalhes...</span>
