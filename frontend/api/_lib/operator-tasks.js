@@ -69,36 +69,35 @@ async function createSchema() {
     ON wms_operador_tarefas(tipo_chave, data_ref)
   `
 
-  // Migração única dos registros que existiam antes da carteira dos operadores.
-  const existing = await sql`
-    SELECT wms_task_id, tipo_nome, tipo_chave, valor_unitario
-    FROM wms_operador_tarefas
-    WHERE tipo_chave IS NULL OR valor_unitario = 0
-    LIMIT 10000
+  // Migração em lote: evita milhares de consultas individuais ao abrir a carteira.
+  await sql`
+    UPDATE wms_operador_tarefas o
+    SET tipo_chave = COALESCE(NULLIF(o.tipo_chave, ''), v.chave),
+        valor_unitario = CASE
+          WHEN COALESCE(o.valor_unitario, 0) = 0 AND v.ativo = TRUE
+            THEN COALESCE(v.valor_unitario, 0)
+          ELSE COALESCE(o.valor_unitario, 0)
+        END
+    FROM wms_tarefa_valores v
+    WHERE v.chave = UPPER(
+      REGEXP_REPLACE(
+        TRANSLATE(
+          COALESCE(NULLIF(o.tipo_chave, ''), o.tipo_nome),
+          'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ',
+          'AAAAAEEEEIIIIOOOOOUUUUC'
+        ),
+        '\\s+',
+        ' ',
+        'g'
+      )
+    )
+      AND (
+        o.tipo_chave IS NULL
+        OR o.tipo_chave = ''
+        OR COALESCE(o.valor_unitario, 0) = 0
+      )
   `
 
-  for (const row of existing) {
-    const key = normalizeWmsTaskKey(row.tipo_chave || row.tipo_nome)
-    if (!key) continue
-
-    const configs = await sql`
-      SELECT valor_unitario, ativo
-      FROM wms_tarefa_valores
-      WHERE chave = ${key}
-      LIMIT 1
-    `
-    const value = configs[0]?.ativo ? Number(configs[0]?.valor_unitario || 0) : 0
-
-    await sql`
-      UPDATE wms_operador_tarefas
-      SET tipo_chave = ${key},
-          valor_unitario = CASE
-            WHEN valor_unitario = 0 THEN ${value}
-            ELSE valor_unitario
-          END
-      WHERE wms_task_id = ${row.wms_task_id}
-    `
-  }
 }
 
 export async function saveOperatorTasks({ date, rows }) {
