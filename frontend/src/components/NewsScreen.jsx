@@ -33,6 +33,41 @@ function wasEdited(createdAt, updatedAt) {
   return Number.isFinite(created) && Number.isFinite(updated) && updated - created > 1500
 }
 
+
+function LinkifiedText({ text }) {
+  const value = String(text || '')
+  const urlPattern = /(https?:\/\/[^\s]+)/gi
+  const parts = value.split(urlPattern)
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (!/^https?:\/\//i.test(part)) {
+          return <span key={`text-${index}`}>{part}</span>
+        }
+
+        const match = part.match(/^(.*?)([),.;!?]+)?$/)
+        const href = match?.[1] || part
+        const trailing = match?.[2] || ''
+
+        return (
+          <span key={`link-${index}`}>
+            <a
+              className="news-inline-link"
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {href}
+            </a>
+            {trailing}
+          </span>
+        )
+      })}
+    </>
+  )
+}
+
 async function compressImage(file) {
   if (!file) return null
 
@@ -437,7 +472,7 @@ function NewsPost({
 
       <div className="news-post-body">
         <h2>{post.titulo}</h2>
-        <p>{post.conteudo}</p>
+        <p className="news-post-content"><LinkifiedText text={post.conteudo} /></p>
       </div>
 
       <PhotoGrid images={images} title={post.titulo} />
