@@ -5294,3 +5294,421 @@ form {
     flex: 1;
   }
 }
+
+
+/* Refinamento geral para celulares e telas pequenas */
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-shell,
+  .app-main,
+  .app-content,
+  .users-page,
+  .news-page,
+  .activities-page,
+  .wallet-page,
+  .wms-settings-page,
+  .change-password-page,
+  .operator-tasks-page {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-topbar {
+    min-height: 62px;
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  .mobile-menu-button {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+  }
+
+  .topbar-title {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .topbar-title strong {
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-actions {
+    flex: 0 0 auto;
+  }
+
+  .topbar-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .app-content {
+    padding: 12px;
+  }
+
+  .dashboard-overview-copy,
+  .dashboard-overview-info,
+  .module-card,
+  .users-panel,
+  .users-default-password,
+  .access-requests-admin,
+  .wallet-balance-card,
+  .wallet-extract,
+  .wms-settings-card,
+  .wms-security-note,
+  .change-password-card,
+  .operator-tasks-panel {
+    border-radius: 15px !important;
+  }
+
+  .dashboard-overview-copy {
+    padding: 18px 16px;
+  }
+
+  .dashboard-overview-copy h1 {
+    font-size: 27px;
+  }
+
+  .dashboard-overview-eyebrow {
+    flex-wrap: wrap;
+  }
+
+  .dashboard-overview-info {
+    padding: 7px;
+  }
+
+  .overview-info-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+    min-height: 42px;
+  }
+
+  .module-grid {
+    grid-template-columns: 1fr !important;
+    gap: 9px;
+  }
+
+  .module-card {
+    min-height: 88px;
+    padding: 14px;
+  }
+
+  .users-header,
+  .news-page-header,
+  .wallet-hero,
+  .wms-settings-header,
+  .operator-tasks-hero {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .users-header h1,
+  .news-page-header h1,
+  .wallet-hero h1,
+  .operator-tasks-hero h1 {
+    font-size: 28px !important;
+  }
+
+  .users-toolbar {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+
+  .users-search {
+    grid-column: auto !important;
+  }
+
+  .users-toolbar select,
+  .users-search,
+  .users-search input,
+  .primary-action-button {
+    width: 100%;
+  }
+
+  .users-default-password {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .users-default-password-action {
+    grid-template-columns: 1fr;
+  }
+
+  .users-default-password-action button {
+    min-height: 44px;
+  }
+
+  .access-request-modal {
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+    border-radius: 17px;
+  }
+
+  .access-request-head {
+    padding: 18px 16px 14px;
+  }
+
+  .access-request-form {
+    padding: 16px;
+  }
+
+  .access-request-form input,
+  .access-request-form select {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .access-requests-admin-head,
+  .access-requests-admin-list article {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .access-request-admin-actions {
+    flex-direction: column;
+  }
+
+  .access-request-admin-actions button {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .wallet-hero {
+    margin-bottom: 0;
+  }
+
+  .wallet-month {
+    width: 100%;
+  }
+
+  .wallet-month input {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .wallet-balance-card {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    padding: 17px;
+  }
+
+  .wallet-summary-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px;
+  }
+
+  .wallet-summary-grid article {
+    min-width: 0;
+    padding: 13px;
+  }
+
+  .wallet-summary-grid article strong {
+    font-size: 17px;
+  }
+
+  .wallet-extract-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .wallet-entry-block > article {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 13px !important;
+  }
+
+  .wallet-entry-value {
+    grid-column: 2;
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+
+  .wallet-task-details {
+    padding: 0 12px 13px !important;
+  }
+
+  .wallet-task-table-wrap,
+  .operator-tasks-table-wrap {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto !important;
+  }
+
+  .operator-tasks-filter {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+    padding: 13px !important;
+  }
+
+  .operator-tasks-field {
+    width: 100%;
+  }
+
+  .operator-tasks-field input,
+  .operator-tasks-filter button {
+    width: 100%;
+    min-height: 46px !important;
+  }
+
+  .operator-tasks-cards {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .operator-tasks-cards article {
+    min-width: 0;
+    padding: 14px !important;
+  }
+
+  .operator-tasks-panel-head {
+    align-items: stretch !important;
+    flex-direction: column !important;
+  }
+
+  .operator-tasks-search {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 42px !important;
+  }
+
+  .news-layout,
+  .news-layout.admin-layout,
+  .news-layout.viewer-layout {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .news-create-trigger {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+  }
+
+  .news-post,
+  .news-composer,
+  .news-empty-state {
+    border-radius: 15px;
+  }
+
+  .wms-settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .wms-settings-card {
+    padding: 15px;
+  }
+
+  .wms-status-details,
+  .wms-collection-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .change-password-card {
+    padding: 15px;
+  }
+
+  .notification-popover {
+    right: 8px;
+    left: 8px;
+    top: 64px;
+    width: auto;
+  }
+
+  .user-modal-backdrop,
+  .profile-photo-backdrop {
+    padding: 0;
+    align-items: end;
+  }
+
+  .user-modal,
+  .profile-photo-modal {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .user-form {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .table-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .table-actions button {
+    min-height: 34px;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-content {
+    padding: 10px;
+  }
+
+  .wallet-summary-grid,
+  .operator-tasks-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-overview-copy h1,
+  .users-header h1,
+  .news-page-header h1,
+  .wallet-hero h1,
+  .operator-tasks-hero h1 {
+    font-size: 25px !important;
+  }
+
+  .overview-status {
+    width: fit-content;
+  }
+
+  .login-panel {
+    padding: 20px 14px;
+  }
+
+  .login-card,
+  .mobile-brand {
+    width: 100%;
+  }
+
+  .login-heading h2 {
+    font-size: 30px;
+  }
+
+  .quick-access-card {
+    margin-bottom: 18px;
+  }
+
+  .wallet-entry-block > article {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    padding: 11px !important;
+  }
+
+  .wallet-entry-icon {
+    width: 34px !important;
+    height: 34px !important;
+  }
+}
