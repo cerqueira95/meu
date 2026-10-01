@@ -10,6 +10,13 @@ function number(value) {
   return new Intl.NumberFormat('pt-BR').format(Number(value || 0))
 }
 
+function money(value) {
+  return Number(value || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+}
+
 function dateLabel(value) {
   const text = String(value || '').slice(0, 10)
   const [year, month, day] = text.split('-')
@@ -133,6 +140,11 @@ export default function OperatorTasksScreen() {
           <strong>{number(data.resumo?.tipos)}</strong>
           <small>tipos diferentes de tarefa</small>
         </article>
+        <article style={styles.card}>
+          <span>VALOR CALCULADO</span>
+          <strong>{money(data.resumo?.valor)}</strong>
+          <small>valor que entra na carteira dos operadores</small>
+        </article>
       </div>
 
       <section style={styles.panel}>
@@ -162,6 +174,8 @@ export default function OperatorTasksScreen() {
                   <th style={styles.th}>Operador</th>
                   <th style={styles.th}>Tipo da tarefa</th>
                   <th style={styles.th}>Quantidade</th>
+                  <th style={styles.th}>Valor unitário</th>
+                  <th style={styles.th}>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -170,6 +184,8 @@ export default function OperatorTasksScreen() {
                     <td style={styles.td}><strong>{row.usuario_nome}</strong></td>
                     <td style={styles.td}>{row.tipo_nome}</td>
                     <td style={styles.td}><strong>{number(row.quantidade)}</strong></td>
+                    <td style={styles.td}>{money(row.valor_unitario)}</td>
+                    <td style={styles.td}><strong>{money(row.valor)}</strong></td>
                   </tr>
                 ))}
               </tbody>
@@ -201,6 +217,7 @@ export default function OperatorTasksScreen() {
                   <th style={styles.th}>Origem</th>
                   <th style={styles.th}>Destino</th>
                   <th style={styles.th}>Palete</th>
+                  <th style={styles.th}>Valor</th>
                   <th style={styles.th}>ID WMS</th>
                 </tr>
               </thead>
@@ -214,6 +231,7 @@ export default function OperatorTasksScreen() {
                     <td style={styles.td}>{task.origem || '-'}</td>
                     <td style={styles.td}>{task.destino || '-'}</td>
                     <td style={styles.td}>{task.palete || '-'}</td>
+                    <td style={styles.td}><strong>{money(task.valor_unitario)}</strong></td>
                     <td style={styles.td}>{task.wms_task_id}</td>
                   </tr>
                 ))}
