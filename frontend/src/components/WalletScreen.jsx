@@ -54,7 +54,7 @@ export default function WalletScreen() {
   }
 
   async function toggleTaskDetails(item) {
-    if (!['wms_tarefa', 'operador_tarefa'].includes(item.tipo)) return
+    if (item.tipo !== 'wms_tarefa') return
 
     if (expandedId === item.id) {
       setExpandedId('')
@@ -173,7 +173,7 @@ export default function WalletScreen() {
                 const expanded = expandedId === item.id
                 return (
                   <div className="wallet-entry-block" key={item.id}>
-                    <article className={['wms_tarefa', 'operador_tarefa'].includes(item.tipo) ? 'wallet-entry-clickable' : ''}>
+                    <article className={item.tipo === 'wms_tarefa' ? 'wallet-entry-clickable' : ''}>
                       <div className={`wallet-entry-icon ${item.tipo}`}>
                         {entryIcon(item)}
                       </div>
@@ -181,7 +181,7 @@ export default function WalletScreen() {
                         <strong>{item.titulo}</strong>
                         <span>{item.detalhe}</span>
                         <small>{formatDate(item.data)}</small>
-                        {['wms_tarefa', 'operador_tarefa'].includes(item.tipo) && (
+                        {item.tipo === 'wms_tarefa' && (
                           <button
                             className="wallet-detail-button"
                             type="button"
@@ -199,7 +199,7 @@ export default function WalletScreen() {
                       </div>
                     </article>
 
-                    {['wms_tarefa', 'operador_tarefa'].includes(item.tipo) && expanded && (
+                    {item.tipo === 'wms_tarefa' && expanded && (
                       <div className="wallet-task-details">
                         {detailsLoading === item.id ? (
                           <span>Carregando detalhes...</span>
