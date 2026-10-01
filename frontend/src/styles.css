@@ -5712,3 +5712,829 @@ form {
     height: 34px !important;
   }
 }
+
+
+/* =========================================================
+   DESIGN SYSTEM 2026 — POLIMENTO GLOBAL DESKTOP + MOBILE
+   ========================================================= */
+
+:root {
+  --ui-bg: #edf2f7;
+  --ui-surface: #ffffff;
+  --ui-surface-soft: #f8fafc;
+  --ui-border: #dfe6ee;
+  --ui-border-strong: #cfd9e5;
+  --ui-text: #10223b;
+  --ui-muted: #6f7d90;
+  --ui-primary: #155eef;
+  --ui-accent: #ffb000;
+  --ui-success: #027a48;
+  --ui-danger: #b42318;
+  --ui-radius: 18px;
+  --ui-shadow: 0 10px 28px rgba(15, 31, 53, 0.055);
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--ui-bg);
+}
+
+.authenticated-page {
+  min-width: 0;
+  background:
+    radial-gradient(circle at 88% -8%, rgba(255,176,0,.07), transparent 20%),
+    linear-gradient(180deg, #f4f7fa 0%, #edf2f7 100%);
+}
+
+.app-shell {
+  min-width: 0;
+  background: transparent;
+}
+
+.app-sidebar {
+  border-right: 1px solid rgba(255,255,255,.05);
+  box-shadow: 12px 0 34px rgba(9, 22, 36, .075);
+}
+
+.sidebar-brand,
+.sidebar-user,
+.sidebar-link,
+.sidebar-collapse-button {
+  border-radius: 13px;
+}
+
+.sidebar-link {
+  min-height: 44px;
+  margin: 2px 0;
+}
+
+.sidebar-link.active {
+  background: linear-gradient(90deg, rgba(255,176,0,.16), rgba(255,176,0,.05));
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.app-topbar {
+  min-height: 74px;
+  padding: 0 clamp(16px, 2.6vw, 36px);
+  border-bottom: 1px solid #e3e9f0;
+  background: rgba(250, 252, 254, .9);
+  box-shadow: 0 7px 20px rgba(15,31,53,.025);
+}
+
+.topbar-title strong {
+  font-size: 15px;
+  letter-spacing: -.01em;
+}
+
+.topbar-user strong {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-content {
+  width: min(1520px, 100%);
+  min-width: 0;
+  margin: 0 auto;
+  padding: clamp(20px, 2.6vw, 34px);
+}
+
+/* títulos e seções */
+.dashboard-kicker {
+  color: #f4a300;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .18em;
+}
+
+.users-header h1,
+.activities-hero h1,
+.news-screen-header h1,
+.wms-settings-header h1,
+.highlights-hero h1,
+.wallet-hero h1,
+.change-password-hero h1 {
+  color: var(--ui-text);
+  letter-spacing: -.04em;
+}
+
+.users-header p,
+.activities-hero p,
+.news-screen-header p,
+.wms-settings-header p,
+.highlights-hero p,
+.wallet-hero p,
+.change-password-hero p {
+  color: var(--ui-muted);
+}
+
+/* dashboard */
+.dashboard-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dashboard-overview-copy,
+.dashboard-overview-info {
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+
+.dashboard-overview-copy {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(24px, 3vw, 34px);
+}
+
+.dashboard-overview-copy::after {
+  content: "";
+  position: absolute;
+  right: -80px;
+  top: -90px;
+  width: 250px;
+  height: 250px;
+  border: 48px solid rgba(255,176,0,.055);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.dashboard-overview-copy h1 {
+  max-width: 800px;
+  margin: 12px 0 10px;
+  color: #0f1f35;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1;
+  letter-spacing: -.045em;
+}
+
+.dashboard-overview-copy p {
+  max-width: 760px;
+  color: #6f7d90;
+  line-height: 1.6;
+}
+
+.dashboard-overview-info {
+  padding: 8px;
+}
+
+.overview-info-item {
+  min-height: 58px;
+  margin: 3px 0;
+  padding: 10px 12px;
+  border-radius: 13px;
+  transition: background .15s ease;
+}
+
+.overview-info-item:hover {
+  background: #f8fafc;
+}
+
+.dashboard-section,
+.home-news-section,
+.dashboard-highlights {
+  margin-top: 18px;
+}
+
+.section-heading,
+.dashboard-highlights-head {
+  margin-bottom: 12px;
+}
+
+.module-grid,
+.home-news-grid,
+.dashboard-highlights-grid {
+  gap: 12px;
+}
+
+.module-card,
+.home-news-card,
+.dashboard-highlight-card {
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(15,31,53,.04);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.module-card:hover,
+.home-news-card:hover,
+.dashboard-highlight-card:hover {
+  transform: translateY(-2px);
+  border-color: #d1dce8;
+  box-shadow: 0 14px 32px rgba(15,31,53,.075);
+}
+
+/* usuários */
+.users-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.users-header {
+  gap: 16px;
+}
+
+.users-toolbar,
+.users-default-password,
+.access-requests-admin,
+.users-panel {
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--ui-shadow);
+}
+
+.users-toolbar {
+  padding: 14px;
+}
+
+.users-search input,
+.users-toolbar select,
+.users-default-password input {
+  min-height: 44px;
+  border: 1px solid #d7e0ea;
+  border-radius: 11px;
+  background: #fff;
+  outline: 0;
+}
+
+.users-search input:focus,
+.users-toolbar select:focus,
+.users-default-password input:focus {
+  border-color: #84adff;
+  box-shadow: 0 0 0 3px rgba(21,94,239,.08);
+}
+
+.users-panel {
+  overflow: hidden;
+}
+
+.users-table {
+  width: 100%;
+}
+
+.users-table th {
+  background: #f8fafc;
+  color: #7d899a;
+}
+
+.users-table tr:hover td {
+  background: #fbfcfe;
+}
+
+.users-default-password {
+  padding: 16px;
+}
+
+.access-requests-admin {
+  overflow: hidden;
+}
+
+.access-requests-admin-head {
+  background: linear-gradient(180deg,#fff,#fbfcfe);
+}
+
+.access-requests-admin-list article:hover {
+  background: #fbfcfe;
+}
+
+/* notícias */
+.news-screen,
+.news-page {
+  min-width: 0;
+}
+
+.news-screen-header,
+.news-page-header {
+  margin-bottom: 18px;
+}
+
+.news-layout {
+  gap: 16px;
+}
+
+.news-post,
+.news-composer,
+.news-empty-state {
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--ui-shadow);
+}
+
+.news-post {
+  overflow: hidden;
+}
+
+.news-post-header,
+.news-social-summary,
+.news-actions,
+.news-comments {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.news-photo-grid {
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.news-comment-bubble {
+  border-radius: 14px;
+}
+
+/* atividades e valores */
+.activities-page {
+  min-width: 0;
+}
+
+.activities-hero {
+  margin-bottom: 2px;
+}
+
+.activity-value-scope,
+.activity-value-card,
+.activities-panel,
+.activity-form-card,
+.activity-preview-card,
+.activity-history-card {
+  border-color: var(--ui-border) !important;
+  box-shadow: var(--ui-shadow);
+}
+
+.activity-value-scope,
+.activity-value-card {
+  border-radius: 17px;
+}
+
+.activity-values-grid {
+  gap: 12px;
+}
+
+.activity-value-card {
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.activity-value-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(15,31,53,.065);
+}
+
+.activity-value-input-wrap,
+.activity-value-edit input,
+.activity-value-scope-options button,
+.activity-value-users button {
+  border-radius: 11px;
+}
+
+/* WMS */
+.wms-settings-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.wms-settings-header {
+  gap: 18px;
+}
+
+.wms-settings-grid {
+  gap: 14px;
+}
+
+.wms-settings-card,
+.wms-loading-card,
+.wms-security-note {
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--ui-shadow);
+}
+
+.wms-card-heading {
+  gap: 12px;
+}
+
+.wms-status-panel,
+.wms-current-credential,
+.wms-status-details > div,
+.wms-collection-summary > div {
+  border-radius: 13px;
+}
+
+.wms-credentials-form input {
+  min-height: 46px;
+  border-radius: 11px;
+}
+
+/* destaques */
+.highlights-page {
+  min-width: 0;
+}
+
+.highlights-hero {
+  gap: 18px;
+}
+
+.highlight-admin-form,
+.my-highlight-history,
+.highlights-wall,
+.highlight-card,
+.highlights-my-stars {
+  border: 1px solid var(--ui-border) !important;
+  border-radius: 18px !important;
+  background: #fff;
+  box-shadow: var(--ui-shadow);
+}
+
+.highlight-form-grid,
+.highlight-candidates,
+.highlights-grid {
+  gap: 10px;
+}
+
+.highlight-candidates button,
+.highlight-card {
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.highlight-candidates button:hover,
+.highlight-card:hover {
+  transform: translateY(-1px);
+}
+
+/* formulários e modais */
+.user-modal,
+.profile-photo-modal,
+.access-request-modal {
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  box-shadow: 0 28px 70px rgba(15,31,53,.18);
+}
+
+.user-modal-heading,
+.profile-photo-heading,
+.access-request-head {
+  border-bottom-color: #edf1f5;
+  background: linear-gradient(180deg,#fff,#fbfcfe);
+}
+
+.user-form input,
+.user-form select,
+.user-form textarea,
+.form-field input,
+.form-field select,
+.form-field textarea {
+  border-color: #d7e0ea;
+  border-radius: 11px;
+}
+
+.user-form input:focus,
+.user-form select:focus,
+.user-form textarea:focus,
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: #84adff;
+  box-shadow: 0 0 0 3px rgba(21,94,239,.08);
+}
+
+.primary-action-button {
+  min-height: 44px;
+  border-radius: 11px;
+  background: linear-gradient(135deg,#ffb000,#ffc43d);
+  color: #172235;
+  box-shadow: 0 8px 18px rgba(255,176,0,.15);
+}
+
+/* tabelas em geral */
+.users-table-wrap,
+.wallet-task-table-wrap,
+.operator-tasks-table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* carregamentos */
+.activities-loading,
+.wms-loading-card,
+.wallet-empty {
+  min-height: 160px;
+  color: #6f7d90;
+}
+
+/* desktop grande */
+@media (min-width: 1400px) {
+  .app-content {
+    padding-left: 34px;
+    padding-right: 34px;
+  }
+
+  .module-grid {
+    grid-template-columns: repeat(4, minmax(0,1fr));
+  }
+}
+
+/* tablet */
+@media (max-width: 1080px) {
+  .dashboard-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .module-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .home-news-grid,
+  .dashboard-highlights-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+
+  .activity-values-grid,
+  .highlights-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+
+/* mobile */
+@media (max-width: 760px) {
+  .app-shell {
+    display: block;
+    min-height: 100vh;
+  }
+
+  .app-main {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .app-topbar {
+    min-height: 64px;
+    gap: 9px;
+    padding: 0 11px;
+  }
+
+  .mobile-menu-button {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    flex: 0 0 auto;
+  }
+
+  .topbar-title {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .topbar-title strong {
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-user > div {
+    display: none;
+  }
+
+  .topbar-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .app-content {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .dashboard-overview {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .dashboard-overview-copy {
+    padding: 19px 16px;
+    border-radius: 16px;
+  }
+
+  .dashboard-overview-copy h1 {
+    margin-top: 9px;
+    font-size: 29px;
+  }
+
+  .dashboard-overview-info {
+    border-radius: 16px;
+  }
+
+  .module-grid,
+  .home-news-grid,
+  .dashboard-highlights-grid,
+  .activity-values-grid,
+  .highlights-grid {
+    grid-template-columns: 1fr !important;
+    gap: 9px;
+  }
+
+  .module-card,
+  .home-news-card,
+  .dashboard-highlight-card,
+  .activity-value-card,
+  .highlight-card {
+    border-radius: 15px !important;
+  }
+
+  .users-header,
+  .activities-hero,
+  .news-screen-header,
+  .news-page-header,
+  .wms-settings-header,
+  .highlights-hero,
+  .change-password-hero {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .users-header h1,
+  .activities-hero h1,
+  .news-screen-header h1,
+  .wms-settings-header h1,
+  .highlights-hero h1,
+  .change-password-hero h1 {
+    font-size: 29px !important;
+  }
+
+  .users-toolbar {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .users-toolbar > *,
+  .users-search,
+  .users-search input,
+  .users-toolbar select {
+    width: 100% !important;
+  }
+
+  .users-default-password {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .users-default-password-action {
+    grid-template-columns: 1fr !important;
+  }
+
+  .access-requests-admin-head,
+  .access-requests-admin-list article {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .access-requests-admin-list article {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .access-request-admin-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .news-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .news-post,
+  .news-composer,
+  .news-empty-state {
+    border-radius: 15px;
+  }
+
+  .news-post-header,
+  .news-social-summary,
+  .news-actions,
+  .news-comments {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .wms-settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .wms-settings-card,
+  .wms-security-note {
+    padding: 15px;
+    border-radius: 15px;
+  }
+
+  .wms-status-details,
+  .wms-collection-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .activity-value-scope {
+    padding: 13px;
+    border-radius: 15px;
+  }
+
+  .activity-value-scope-options,
+  .activity-value-users,
+  .highlight-form-grid,
+  .highlight-candidates {
+    grid-template-columns: 1fr !important;
+  }
+
+  .highlight-admin-form,
+  .my-highlight-history,
+  .highlights-wall {
+    border-radius: 15px !important;
+  }
+
+  .highlight-admin-head,
+  .highlights-wall-head {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .user-modal-backdrop,
+  .profile-photo-backdrop,
+  .access-request-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .user-modal,
+  .profile-photo-modal,
+  .access-request-modal {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .user-form {
+    grid-template-columns: 1fr !important;
+    gap: 11px;
+    padding: 15px;
+  }
+
+  .notification-popover {
+    right: 8px !important;
+    left: 8px !important;
+    top: 66px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 440px) {
+  .app-content {
+    padding: 10px;
+  }
+
+  .dashboard-overview-copy h1,
+  .users-header h1,
+  .activities-hero h1,
+  .news-screen-header h1,
+  .wms-settings-header h1,
+  .highlights-hero h1,
+  .change-password-hero h1 {
+    font-size: 26px !important;
+  }
+
+  .access-request-admin-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .login-panel {
+    padding: 20px 14px;
+  }
+
+  .login-card,
+  .mobile-brand {
+    width: 100%;
+  }
+
+  .login-heading h2 {
+    font-size: 30px;
+  }
+}
