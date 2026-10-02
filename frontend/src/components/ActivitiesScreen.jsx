@@ -824,7 +824,10 @@ function ApprovalsScreen({ onBack }) {
   const [status, setStatus] = useState('pendente')
   const [loading, setLoading] = useState(true)
   const [workingId, setWorkingId] = useState(null)
+  const [bulkWorking, setBulkWorking] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
   const [editing, setEditing] = useState(null)
+  const [lightbox, setLightbox] = useState(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -837,16 +840,62 @@ function ApprovalsScreen({ onBack }) {
     setError('')
 
     try {
-      const [approvalData, fiveSConfig] = await Promise.all([
-        api.get(`/api/activities/admin?status=${status}`),
-        api.get('/api/activities/5s'),
-      ])
+      const approvalData = await api.get(`/api/activities/admin?status=${status}`)
       setData(approvalData)
-      setConfig(fiveSConfig)
+      setSelectedIds([])
     } catch (requestError) {
       setError(requestError.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function openEditor(batch) {
+    setError('')
+    try {
+      let currentConfig = config
+      if (!currentConfig) {
+        currentConfig = await api.get('/api/activities/5s?mode=config')
+        setConfig(currentConfig)
+      }
+      setEditing(batch)
+    } catch (requestError) {
+      setError(requestError.message)
+    }
+  }
+
+  function toggleSelected(id) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    )
+  }
+
+  function toggleAllPending() {
+    const pendingIds = (data?.lancamentos || [])
+      .filter((batch) => batch.status === 'pendente')
+      .map((batch) => batch.id)
+    setSelectedIds((current) => current.length === pendingIds.length ? [] : pendingIds)
+  }
+
+  async function approveSelected() {
+    if (!selectedIds.length) return
+    if (!window.confirm(`Aprovar ${selectedIds.length} atividade(s) selecionada(s)?`)) return
+
+    setBulkWorking(true)
+    setError('')
+    setMessage('')
+    try {
+      const response = await api.post('/api/activities/admin', {
+        action: 'aprovar_varios',
+        ids: selectedIds,
+      })
+      setMessage(response.message)
+      setSelectedIds([])
+      await load()
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setBulkWorking(false)
     }
   }
 
@@ -930,12 +979,39 @@ function ApprovalsScreen({ onBack }) {
         </button>
       </div>
 
+      {status === 'pendente' && !loading && data?.lancamentos?.length > 0 && (
+        <div className="activity-bulk-bar">
+          <label>
+            <input
+              type="checkbox"
+              checked={selectedIds.length > 0 && selectedIds.length === data.lancamentos.filter((batch) => batch.status === 'pendente').length}
+              onChange={toggleAllPending}
+            />
+            <span>Selecionar todas</span>
+          </label>
+          <strong>{selectedIds.length} selecionada(s)</strong>
+          <button type="button" onClick={approveSelected} disabled={!selectedIds.length || bulkWorking}>
+            {bulkWorking ? 'Aprovando...' : 'Aprovar selecionadas'}
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="activities-loading">Carregando aprovações...</div>
       ) : data?.lancamentos?.length ? (
         <div className="activity-approval-list">
           {data.lancamentos.map((batch) => (
-            <article className="activity-approval-card" key={batch.id}>
+            <article className={`activity-approval-card ${selectedIds.includes(batch.id) ? 'selected' : ''}`} key={batch.id}>
+              {batch.status === 'pendente' && (
+                <label className="activity-approval-select" title="Selecionar para aprovação em lote">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(batch.id)}
+                    onChange={() => toggleSelected(batch.id)}
+                  />
+                  <span>Selecionar</span>
+                </label>
+              )}
               <div className="activity-approval-top">
                 <div>
                   <span className="activity-approval-type">{batch.atividade_nome}</span>
@@ -971,7 +1047,11 @@ function ApprovalsScreen({ onBack }) {
                     <button
                       type="button"
                       key={item.id}
-                      onClick={() => item.evidencia_foto && window.open(item.evidencia_foto, '_blank', 'noopener,noreferrer')}
+                      onClick={() => item.evidencia_foto && setLightbox({
+                        src: item.evidencia_foto,
+                        title: item.opcao_nome,
+                        batchId: batch.id,
+                      })}
                     >
                       {item.evidencia_foto && <img src={item.evidencia_foto} alt="" />}
                       <strong>{item.opcao_nome}</strong>
@@ -996,7 +1076,7 @@ function ApprovalsScreen({ onBack }) {
 
               {batch.status === 'pendente' && (
                 <div className="activity-approval-actions">
-                  <button type="button" className="edit" onClick={() => setEditing(batch)} disabled={workingId === batch.id}>
+                  <button type="button" className="edit" onClick={() => openEditor(batch)} disabled={workingId === batch.id}>
                     Editar
                   </button>
                   <button type="button" className="reject" onClick={() => reject(batch)} disabled={workingId === batch.id}>
@@ -1015,6 +1095,25 @@ function ApprovalsScreen({ onBack }) {
           <span>✓</span>
           <h2>Nenhuma atividade nesta fila</h2>
           <p>Quando houver lançamentos, eles aparecerão aqui agrupados por atividade.</p>
+        </div>
+      )}
+
+      {lightbox && (
+        <div
+          className="activity-photo-lightbox"
+          role="presentation"
+          onClick={() => setLightbox(null)}
+        >
+          <div className="activity-photo-lightbox-dialog" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="activity-photo-lightbox-head">
+              <div>
+                <strong>{lightbox.title}</strong>
+                <small>Atividade #{lightbox.batchId}</small>
+              </div>
+              <button type="button" onClick={() => setLightbox(null)} aria-label="Fechar">×</button>
+            </div>
+            <img src={lightbox.src} alt={`Evidência de ${lightbox.title}`} />
+          </div>
         </div>
       )}
 
