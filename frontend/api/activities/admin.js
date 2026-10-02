@@ -6,6 +6,7 @@ import {
   ensureActivitiesSchema,
   getActivityConfig,
   loadActivityBatch,
+  serializeActivityBatch,
   optionMap5s,
   validImageData,
 } from '../_lib/activities.js'
@@ -23,29 +24,40 @@ export default async function handler(req, res) {
         ? requestedStatus
         : 'pendente'
 
-      const rows = status === 'todos'
-        ? await sql`
-            SELECT id
-            FROM atividade_lancamentos
-            ORDER BY
-              CASE WHEN status = 'pendente' THEN 0 ELSE 1 END,
-              data_atividade DESC,
-              criado_em DESC
-            LIMIT 200
-          `
-        : await sql`
-            SELECT id
-            FROM atividade_lancamentos
-            WHERE status = ${status}
-            ORDER BY data_atividade DESC, criado_em DESC
-            LIMIT 200
-          `
+      // Carrega lançamentos, participantes e evidências em uma única consulta.
+      // Antes esta tela fazia 1 consulta inicial + 3 consultas por lançamento (N+1),
+      // o que deixava a fila lenta quando havia muitas atividades.
+      const rows = await sql`
+        SELECT
+          l.*,
+          COALESCE(
+            (
+              SELECT json_agg(p ORDER BY CASE WHEN p.papel = 'principal' THEN 0 ELSE 1 END, p.usuario_nome)
+              FROM atividade_lancamento_participantes p
+              WHERE p.lancamento_id = l.id
+            ),
+            '[]'::json
+          ) AS participantes_json,
+          COALESCE(
+            (
+              SELECT json_agg(i ORDER BY i.id)
+              FROM atividade_lancamento_itens i
+              WHERE i.lancamento_id = l.id
+            ),
+            '[]'::json
+          ) AS itens_json
+        FROM atividade_lancamentos l
+        WHERE (${status} = 'todos' OR l.status = ${status})
+        ORDER BY
+          CASE WHEN l.status = 'pendente' THEN 0 ELSE 1 END,
+          l.data_atividade DESC,
+          l.criado_em DESC
+        LIMIT 200
+      `
 
-      const lancamentos = []
-      for (const row of rows) {
-        const batch = await loadActivityBatch(Number(row.id))
-        if (batch) lancamentos.push(batch)
-      }
+      const lancamentos = rows.map((row) =>
+        serializeActivityBatch(row, row.participantes_json || [], row.itens_json || []),
+      )
 
       const summaryRows = await sql`
         SELECT
@@ -64,6 +76,78 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const action = String(req.body?.action || '').trim().toLowerCase()
+
+      if (action === 'aprovar_varios') {
+        const ids = [...new Set(
+          (Array.isArray(req.body?.ids) ? req.body.ids : [])
+            .map(Number)
+            .filter((value) => Number.isInteger(value) && value > 0),
+        )].slice(0, 100)
+
+        if (!ids.length) {
+          return res.status(400).json({ status: 'error', message: 'Selecione pelo menos uma atividade.' })
+        }
+
+        let approvedCount = 0
+        for (const batchId of ids) {
+          const currentBatch = await loadActivityBatch(batchId)
+          if (!currentBatch || currentBatch.status !== 'pendente') continue
+
+          if (await isMonthClosed(currentBatch.data_atividade)) {
+            return res.status(409).json({
+              status: 'error',
+              message: `A atividade #${batchId} pertence a um mês fechado. Reabra o mês antes de aprovar.`,
+            })
+          }
+
+          await sql`
+            UPDATE atividade_lancamentos
+            SET status = 'aprovado',
+                motivo_reprovacao = NULL,
+                aprovado_por_id = ${admin.id},
+                aprovado_por_nome = ${admin.nome},
+                aprovado_em = NOW(),
+                reprovado_por_id = NULL,
+                reprovado_por_nome = NULL,
+                reprovado_em = NULL,
+                atualizado_em = NOW()
+            WHERE id = ${batchId}
+              AND status = 'pendente'
+          `
+
+          for (const participant of currentBatch.participantes) {
+            await sql`
+              INSERT INTO atividade_notificacoes (
+                usuario_id, lancamento_id, tipo, titulo, mensagem
+              )
+              VALUES (
+                ${participant.usuario_id},
+                ${batchId},
+                'aprovado',
+                ${`${currentBatch.atividade_nome} aprovado`},
+                ${`Seu lançamento ${currentBatch.atividade_nome} #${batchId} foi aprovado por ${admin.nome}.`}
+              )
+            `
+          }
+
+          await logAdminAction(admin, {
+            action: 'aprovar_atividade',
+            entity: 'atividade_lancamento',
+            entityId: batchId,
+            description: `Atividade ${currentBatch.atividade_nome} #${batchId} aprovada em lote.`,
+            before: { status: currentBatch.status },
+            after: { status: 'aprovado' },
+          })
+          approvedCount += 1
+        }
+
+        return res.status(200).json({
+          status: 'ok',
+          message: `${approvedCount} atividade(s) aprovada(s) com sucesso.`,
+          aprovadas: approvedCount,
+        })
+      }
+
       const id = Number(req.body?.id)
 
       if (!Number.isInteger(id) || id <= 0) {
