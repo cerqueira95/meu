@@ -39,6 +39,7 @@ const routes = new Map([
   ['/api/activities/integralizacao-devolucao', './api/activities/integralizacao-devolucao.js'],
   ['/api/activities/repack', './api/activities/repack.js'],
   ['/api/activities/admin', './api/activities/admin.js'],
+  ['/api/activities/history', './api/activities/history.js'],
   ['/api/activities/notifications', './api/activities/notifications.js'],
   ['/api/activities/settings', './api/activities/settings.js'],
   ['/api/wallet', './api/wallet/index.js'],
