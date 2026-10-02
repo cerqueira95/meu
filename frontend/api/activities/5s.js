@@ -25,6 +25,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ status: 'error', message: 'Atividade 5S indisponível.' })
       }
 
+      const configOnly = String(req.query?.mode || '').toLowerCase() === 'config'
+
       const [people, recent] = await Promise.all([
         sql`
           SELECT id, nome, cpf, turno, perfil
@@ -33,15 +35,17 @@ export default async function handler(req, res) {
             AND id <> ${usuario.id}
           ORDER BY nome
         `,
-        sql`
-          SELECT DISTINCT l.id
-          FROM atividade_lancamentos l
-          INNER JOIN atividade_lancamento_participantes p ON p.lancamento_id = l.id
-          WHERE l.atividade_chave = '5s'
-            AND p.usuario_id = ${usuario.id}
-          ORDER BY l.id DESC
-          LIMIT 8
-        `,
+        configOnly
+          ? Promise.resolve([])
+          : sql`
+              SELECT DISTINCT l.id
+              FROM atividade_lancamentos l
+              INNER JOIN atividade_lancamento_participantes p ON p.lancamento_id = l.id
+              WHERE l.atividade_chave = '5s'
+                AND p.usuario_id = ${usuario.id}
+              ORDER BY l.id DESC
+              LIMIT 8
+            `,
       ])
 
       const lancamentos = []
