@@ -9,6 +9,7 @@ import EscalonadaScreen from './components/EscalonadaScreen.jsx'
 import EscalonadaAdminScreen from './components/EscalonadaAdminScreen.jsx'
 import ActivitiesScreen from './components/ActivitiesScreen.jsx'
 import ActivityValuesScreen from './components/ActivityValuesScreen.jsx'
+import ActivityHistoryScreen from './components/ActivityHistoryScreen.jsx'
 import WalletScreen from './components/WalletScreen.jsx'
 import WalletCapsScreen from './components/WalletCapsScreen.jsx'
 import HighlightsScreen from './components/HighlightsScreen.jsx'
@@ -1496,7 +1497,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
   const menuItems = [
     { id: 'painel', label: 'Painel', icon: 'painel' },
     { id: 'news', label: 'Armazém New', icon: 'news' },
-    ...(canUseActivities ? [{ id: 'atividades', label: 'Atividades', icon: 'atividades' }] : []),
+    ...(canUseActivities ? [{ id: 'atividades', label: 'Atividades', icon: 'atividades' }, { id: 'historico-atividades', label: 'Histórico de atividades', icon: 'relatorios' }] : []),
     ...(canUseWallet ? [{ id: 'carteira', label: 'Carteira', icon: 'carteira' }] : []),
     { id: 'destaques', label: 'Destaques', icon: 'destaques' },
     ...(isAdmin ? [{ id: 'gerenciar-destaques', label: 'Gerenciar destaques', icon: 'destaques' }] : []),
@@ -1580,6 +1581,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     rotas: { title: 'Rotas', description: 'Acompanhamento das rotas e entregas.', icon: 'rotas' },
     devolucoes: { title: 'Devoluções', description: 'Gestão e análise das devoluções da operação.', icon: 'devolucoes' },
     atividades: { title: 'Atividades', description: 'Lançamentos operacionais do armazém.', icon: 'atividades' },
+    'historico-atividades': { title: 'Histórico de atividades', description: 'Atividades aprovadas, reprovadas e relatório por período.', icon: 'relatorios' },
     carteira: { title: 'Carteira', description: 'Saldo, teto e extrato da remuneração variável.', icon: 'carteira' },
     destaques: { title: 'Destaques da operação', description: 'Reconhecimentos e estrelas da equipe.', icon: 'destaques' },
     'gerenciar-destaques': { title: 'Gerenciar destaques', description: 'Escolha os destaques da operação e registre o motivo.', icon: 'destaques' },
@@ -1937,6 +1939,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <NewsScreen currentUser={usuario} />
           ) : activeSection === 'atividades' && canUseActivities ? (
             <ActivitiesScreen currentUser={usuario} />
+          ) : activeSection === 'historico-atividades' && canUseActivities ? (
+            <ActivityHistoryScreen currentUser={usuario} />
           ) : activeSection === 'aprovar-atividades' && isAdmin ? (
             <ActivitiesScreen currentUser={usuario} initialView="approvals" />
           ) : activeSection === 'valores-atividades' && isAdmin ? (
