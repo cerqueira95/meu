@@ -2,7 +2,7 @@
   "expo": {
     "name": "Warehouse",
     "slug": "warehouse",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "warehouse",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.nexlog.warehouse",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "supportsTablet": false,
       "icon": "./assets/icon.png",
       "userInterfaceStyle": "dark"
@@ -30,7 +30,7 @@
     },
     "android": {
       "package": "com.nexlog.warehouse",
-      "versionCode": 1,
+      "versionCode": 2,
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
