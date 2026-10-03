@@ -386,6 +386,26 @@ function LoginScreen({ onLogin }) {
             </button>
           </form>
 
+          <div className="login-app-download">
+            <div className="login-app-download-icon" aria-hidden="true">
+              <span>W</span>
+            </div>
+            <div className="login-app-download-copy">
+              <span>WAREHOUSE APP</span>
+              <strong>Leve a operação para o celular</strong>
+              <small>Android • versão 0.2.0</small>
+            </div>
+            <a
+              className="login-app-download-button"
+              href="https://raw.githubusercontent.com/cerqueira95/meu/apk-test/Warehouse-App-Teste.apk?v=0.2.0"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Baixar app
+              <span aria-hidden="true">↓</span>
+            </a>
+          </div>
+
           <div className="login-support">
             <span className="support-dot" />
             <p>
