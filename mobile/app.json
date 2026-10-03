@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Warehouse",
+    "slug": "warehouse",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "warehouse",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.nexlog.warehouse",
+      "permissions": ["CAMERA"]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O Warehouse usa a câmera para registrar evidências das atividades.",
+          "photosPermission": "O Warehouse acessa suas fotos para anexar evidências das atividades.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ]
+    ]
+  }
+}

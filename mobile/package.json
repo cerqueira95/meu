@@ -1,0 +1,20 @@
+{
+  "name": "warehouse-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "web": "expo start --web",
+    "doctor": "expo-doctor"
+  },
+  "dependencies": {
+    "expo": "^57.0.0",
+    "expo-image-manipulator": "~57.0.17",
+    "expo-image-picker": "~57.0.17",
+    "expo-secure-store": "57.0.4",
+    "react": "19.2.3",
+    "react-native": "0.86.0"
+  }
+}

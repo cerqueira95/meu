@@ -24,6 +24,13 @@ export function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex')
 }
 
+export function getBearerToken(req) {
+  const authorization = String(req?.headers?.authorization || '').trim()
+  const match = authorization.match(/^Bearer\s+(.+)$/i)
+  return match ? match[1].trim() : ''
+}
+
+
 export async function createSession(usuarioId, req, res) {
   const token = crypto.randomBytes(32).toString('base64url')
   const tokenHash = hashToken(token)
@@ -159,6 +166,15 @@ export async function destroySession(req, res) {
 }
 
 export async function getSessionUser(req) {
+  const bearerToken = getBearerToken(req)
+
+  if (bearerToken) {
+    const quickUser = await getQuickAccessUser(bearerToken, req)
+    if (quickUser) {
+      return quickUser
+    }
+  }
+
   const token = getCookie(req)
 
   if (!token) {
