@@ -393,11 +393,11 @@ function LoginScreen({ onLogin }) {
             <div className="login-app-download-copy">
               <span>WAREHOUSE APP</span>
               <strong>Leve a operação para o celular</strong>
-              <small>Android • versão 0.2.0</small>
+              <small>Android • versão 0.3.0</small>
             </div>
             <a
               className="login-app-download-button"
-              href="https://raw.githubusercontent.com/cerqueira95/meu/apk-test/Warehouse-App-Teste.apk?v=0.2.0"
+              href="https://raw.githubusercontent.com/cerqueira95/meu/apk-test/Warehouse-App-Teste.apk?v=0.3.0"
               target="_blank"
               rel="noreferrer"
             >
