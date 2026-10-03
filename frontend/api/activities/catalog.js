@@ -16,6 +16,24 @@ const SEPARATION_KEYS = [
   'separacao_transferencia',
 ]
 
+const RETORNO_KEYS = [
+  'retorno_rota_molho_ag',
+  'retorno_rota_devolucao',
+  'retorno_rota_troca',
+  'retorno_rota_chapatex',
+]
+
+const REPACK_KEYS = [
+  'repack_gfa_vidro',
+  'repack_lata',
+  'repack_long_neck',
+  'repack_pet',
+  'repack_destilado',
+  'repack_agua',
+  'repack_ow',
+  'repack_bib',
+]
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
@@ -44,12 +62,27 @@ export default async function handler(req, res) {
 
     await ensureActivitiesSchema()
 
-    const [fiveS, amarracao, selo, separationConfigs] = await Promise.all([
+    const [
+      fiveS,
+      amarracao,
+      selo,
+      integralizacao,
+      separationConfigs,
+      retornoConfigs,
+      repackConfigs,
+    ] = await Promise.all([
       getActivityConfig('5s', usuario.id),
       getActivityConfig('amarracao', usuario.id),
       getActivityConfig('selo_vermelho', usuario.id),
+      getActivityConfig('integralizacao_devolucao', usuario.id),
       Promise.all(
         SEPARATION_KEYS.map((chave) => getActivityConfig(chave, usuario.id)),
+      ),
+      Promise.all(
+        RETORNO_KEYS.map((chave) => getActivityConfig(chave, usuario.id)),
+      ),
+      Promise.all(
+        REPACK_KEYS.map((chave) => getActivityConfig(chave, usuario.id)),
       ),
     ])
 
@@ -90,9 +123,41 @@ export default async function handler(req, res) {
       atividades.push({
         chave: 'separacao',
         nome: 'Separação',
-        descricao: 'Escolha o tipo e lance somente os campos necessários.',
+        descricao: 'Marketing, Despejo, CHOPP, Pré-Picking, Repack e Transferência.',
         rota: '/api/activities/separacao',
         tipos_ativos: activeSeparation.length,
+      })
+    }
+
+    const activeRetorno = retornoConfigs.filter((item) => item?.ativo)
+    if (activeRetorno.length > 0) {
+      atividades.push({
+        chave: 'retorno_rota',
+        nome: 'Retorno de Rota',
+        descricao: 'Molho AG, Devolução, Troca e Separação de Chapatex.',
+        rota: '/api/activities/retorno-rota',
+        tipos_ativos: activeRetorno.length,
+      })
+    }
+
+    if (integralizacao?.ativo) {
+      atividades.push({
+        chave: 'integralizacao_devolucao',
+        nome: 'Integralização da Devolução',
+        descricao: 'Confirme a integralização, participantes e evidência.',
+        rota: '/api/activities/integralizacao-devolucao',
+        valor_unitario: Number(integralizacao.valor_unitario || 0),
+      })
+    }
+
+    const activeRepack = repackConfigs.filter((item) => item?.ativo)
+    if (activeRepack.length > 0) {
+      atividades.push({
+        chave: 'repack',
+        nome: 'Repack',
+        descricao: 'SKU recuperado, quantidade de caixas e evidência.',
+        rota: '/api/activities/repack',
+        tipos_ativos: activeRepack.length,
       })
     }
 

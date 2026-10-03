@@ -83,6 +83,8 @@ export function Field({
   autoCapitalize = 'sentences',
   multiline = false,
   maxLength,
+  onFocus,
+  onBlur,
 }) {
   return (
     <View style={styles.fieldWrap}>
@@ -98,6 +100,8 @@ export function Field({
         autoCapitalize={autoCapitalize}
         multiline={multiline}
         maxLength={maxLength}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     </View>
   )

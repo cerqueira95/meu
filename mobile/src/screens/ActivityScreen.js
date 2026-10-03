@@ -15,6 +15,9 @@ import FiveSForm from '../forms/FiveSForm'
 import AmarracaoForm from '../forms/AmarracaoForm'
 import SeloVermelhoForm from '../forms/SeloVermelhoForm'
 import SeparacaoForm from '../forms/SeparacaoForm'
+import RetornoRotaForm from '../forms/RetornoRotaForm'
+import IntegralizacaoDevolucaoForm from '../forms/IntegralizacaoDevolucaoForm'
+import RepackForm from '../forms/RepackForm'
 import { colors, radius } from '../theme'
 
 const COMPONENTS = {
@@ -22,6 +25,9 @@ const COMPONENTS = {
   amarracao: AmarracaoForm,
   selo_vermelho: SeloVermelhoForm,
   separacao: SeparacaoForm,
+  retorno_rota: RetornoRotaForm,
+  integralizacao_devolucao: IntegralizacaoDevolucaoForm,
+  repack: RepackForm,
 }
 
 export default function ActivityScreen({

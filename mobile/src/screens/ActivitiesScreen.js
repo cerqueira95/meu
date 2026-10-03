@@ -18,6 +18,9 @@ const META = {
   amarracao: { code: 'AM', accent: '#9A3412' },
   selo_vermelho: { code: 'SV', accent: '#B91C1C' },
   separacao: { code: 'SP', accent: '#1D4ED8' },
+  retorno_rota: { code: 'RR', accent: '#7C3AED' },
+  integralizacao_devolucao: { code: 'ID', accent: '#0F766E' },
+  repack: { code: 'RP', accent: '#B45309' },
 }
 
 export default function ActivitiesScreen({

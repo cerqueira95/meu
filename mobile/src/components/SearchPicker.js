@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -24,6 +25,7 @@ export default function SearchPicker({
   maxResults = 8,
 }) {
   const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
 
   const selectedValues = multiple
     ? Array.isArray(value) ? value : []
@@ -44,10 +46,6 @@ export default function SearchPicker({
   const results = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('pt-BR')
 
-    if (!q) {
-      return []
-    }
-
     return options
       .filter((option) => {
         const alreadySelected = selectedValues.some((selectedValue) =>
@@ -56,6 +54,10 @@ export default function SearchPicker({
 
         if (alreadySelected) {
           return false
+        }
+
+        if (!q) {
+          return true
         }
 
         return String(option.label || '')
@@ -73,6 +75,7 @@ export default function SearchPicker({
     }
 
     setQuery('')
+    setOpen(true)
   }
 
   function remove(optionValue) {
@@ -88,7 +91,9 @@ export default function SearchPicker({
     onChange(emptyValue)
   }
 
-  const searching = Boolean(query.trim())
+  function handleBlur() {
+    setTimeout(() => setOpen(false), 180)
+  }
 
   return (
     <View style={styles.wrap}>
@@ -97,10 +102,57 @@ export default function SearchPicker({
 
       <Field
         value={query}
-        onChangeText={setQuery}
+        onChangeText={(value) => {
+          setQuery(value)
+          setOpen(true)
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={handleBlur}
         placeholder={placeholder}
         autoCapitalize="words"
       />
+
+      {open && (
+        <View style={styles.results}>
+          <View style={styles.resultsHead}>
+            <Text style={styles.resultsHint}>
+              {query.trim() ? 'Resultados' : 'Sugestões'}
+            </Text>
+            <Text style={styles.resultsCount}>
+              {results.length}
+            </Text>
+          </View>
+
+          {results.length > 0 ? (
+            <ScrollView
+              style={styles.resultsScroll}
+              keyboardShouldPersistTaps="always"
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+            >
+              {results.map((option) => (
+                <Pressable
+                  key={String(option.value)}
+                  onPress={() => select(option.value)}
+                  style={({ pressed }) => [
+                    styles.resultRow,
+                    pressed && styles.resultRowPressed,
+                  ]}
+                >
+                  <Text style={styles.resultText}>{option.label}</Text>
+                  <Text style={styles.resultAdd}>+</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.empty}>
+              {options.length
+                ? 'Nenhum resultado encontrado.'
+                : 'Nenhuma opção disponível.'}
+            </Text>
+          )}
+        </View>
+      )}
 
       {selectedOptions.length > 0 && (
         <View style={styles.selectedArea}>
@@ -117,28 +169,6 @@ export default function SearchPicker({
               />
             ))}
           </View>
-        </View>
-      )}
-
-      {searching && (
-        <View style={styles.results}>
-          {results.length > 0 ? (
-            results.map((option) => (
-              <Pressable
-                key={String(option.value)}
-                onPress={() => select(option.value)}
-                style={({ pressed }) => [
-                  styles.resultRow,
-                  pressed && styles.resultRowPressed,
-                ]}
-              >
-                <Text style={styles.resultText}>{option.label}</Text>
-                <Text style={styles.resultAdd}>+</Text>
-              </Pressable>
-            ))
-          ) : (
-            <Text style={styles.empty}>Nenhum resultado encontrado.</Text>
-          )}
         </View>
       )}
     </View>
@@ -161,22 +191,6 @@ const styles = StyleSheet.create({
     marginTop: 3,
     marginBottom: 10,
   },
-  selectedArea: {
-    marginTop: -2,
-    marginBottom: 7,
-  },
-  selectedLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginBottom: 7,
-  },
-  selectedChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
   results: {
     marginTop: -6,
     marginBottom: 12,
@@ -185,6 +199,31 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     backgroundColor: colors.cardElevated,
+  },
+  resultsHead: {
+    minHeight: 34,
+    paddingHorizontal: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.input,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  resultsHint: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  resultsCount: {
+    color: colors.blue,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  resultsScroll: {
+    maxHeight: 285,
   },
   resultRow: {
     minHeight: 50,
@@ -213,5 +252,21 @@ const styles = StyleSheet.create({
     color: colors.muted,
     padding: 14,
     fontSize: 13,
+  },
+  selectedArea: {
+    marginTop: 1,
+    marginBottom: 7,
+  },
+  selectedLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 7,
+  },
+  selectedChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
 })
