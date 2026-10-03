@@ -21,6 +21,7 @@ import LoginScreen from './src/screens/LoginScreen'
 import LauncherScreen from './src/screens/LauncherScreen'
 import ActivitiesScreen from './src/screens/ActivitiesScreen'
 import ActivityScreen from './src/screens/ActivityScreen'
+import WalletScreen from './src/screens/WalletScreen'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { colors } from './src/theme'
 
@@ -111,10 +112,19 @@ function AppContent() {
     )
   }
 
+  if (screen.name === 'wallet') {
+    return (
+      <WalletScreen
+        onBack={() => setScreen({ name: 'launcher' })}
+      />
+    )
+  }
+
   return (
     <LauncherScreen
       user={user}
       onOpenActivities={() => setScreen({ name: 'activities' })}
+      onOpenWallet={() => setScreen({ name: 'wallet' })}
       onLogout={handleLogout}
     />
   )

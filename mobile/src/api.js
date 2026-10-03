@@ -76,6 +76,12 @@ export function loadActivityCatalog() {
   return apiRequest('/api/activities/catalog')
 }
 
+export function loadWalletSummary(inicio, fim) {
+  return apiRequest(
+    `/api/wallet/summary?inicio=${encodeURIComponent(inicio)}&fim=${encodeURIComponent(fim)}`,
+  )
+}
+
 export function loadActivity(path) {
   return apiRequest(path)
 }

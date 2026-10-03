@@ -36,7 +36,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#07111F"
       },
-      "permissions": ["CAMERA"],
+      "permissions": [
+        "CAMERA"
+      ],
       "userInterfaceStyle": "dark"
     },
     "plugins": [
@@ -66,7 +68,8 @@
             "image": "./assets/splash-logo.png"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

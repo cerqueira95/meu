@@ -10,6 +10,7 @@
     "doctor": "expo-doctor"
   },
   "dependencies": {
+    "@react-native-community/datetimepicker": "9.1.0",
     "expo": "^57.0.0",
     "expo-image-manipulator": "~57.0.17",
     "expo-image-picker": "~57.0.17",

@@ -19,6 +19,7 @@ function firstName(name) {
 export default function LauncherScreen({
   user,
   onOpenActivities,
+  onOpenWallet,
   onLogout,
 }) {
   return (
@@ -60,6 +61,28 @@ export default function LauncherScreen({
           <Text style={styles.moduleTitle}>Atividades</Text>
           <Text style={styles.moduleDescription}>
             Lançamentos rápidos com evidência e aprovação.
+          </Text>
+        </View>
+
+        <Text style={styles.arrow}>›</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={onOpenWallet}
+        style={({ pressed }) => [
+          styles.moduleCard,
+          styles.moduleCardSpacing,
+          pressed && { transform: [{ scale: 0.985 }] },
+        ]}
+      >
+        <View style={[styles.moduleIcon, styles.walletIcon]}>
+          <Text style={[styles.moduleIconText, styles.walletIconText]}>R$</Text>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.moduleTitle}>Carteira</Text>
+          <Text style={styles.moduleDescription}>
+            Consulte o valor acumulado por intervalo de datas.
           </Text>
         </View>
 
@@ -124,6 +147,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  moduleCardSpacing: {
+    marginTop: 12,
+  },
   moduleIcon: {
     width: 58,
     height: 58,
@@ -139,6 +165,14 @@ const styles = StyleSheet.create({
     color: colors.blue,
     fontSize: 18,
     fontWeight: '900',
+  },
+  walletIcon: {
+    backgroundColor: colors.greenSoft,
+    borderColor: colors.green,
+  },
+  walletIconText: {
+    color: colors.green,
+    fontSize: 16,
   },
   moduleTitle: {
     color: colors.text,
