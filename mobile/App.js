@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import * as SplashScreen from 'expo-splash-screen'
 import {
   ActivityIndicator,
   StyleSheet,
@@ -22,6 +23,11 @@ import ActivitiesScreen from './src/screens/ActivitiesScreen'
 import ActivityScreen from './src/screens/ActivityScreen'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { colors } from './src/theme'
+
+SplashScreen.setOptions({
+  duration: 450,
+  fade: true,
+})
 
 function AppContent() {
   const [booting, setBooting] = useState(true)

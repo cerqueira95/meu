@@ -5,7 +5,20 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "warehouse",
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#07111F",
+    "primaryColor": "#4F8CFF",
     "userInterfaceStyle": "dark",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "ios": {
+      "bundleIdentifier": "com.nexlog.warehouse",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "icon": "./assets/icon.png",
+      "userInterfaceStyle": "dark"
+    },
     "androidStatusBar": {
       "backgroundColor": "#07111F",
       "barStyle": "light-content",
@@ -17,7 +30,14 @@
     },
     "android": {
       "package": "com.nexlog.warehouse",
-      "permissions": ["CAMERA"]
+      "versionCode": 1,
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#07111F"
+      },
+      "permissions": ["CAMERA"],
+      "userInterfaceStyle": "dark"
     },
     "plugins": [
       [
@@ -32,6 +52,19 @@
         "expo-secure-store",
         {
           "configureAndroidBackup": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#07111F",
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#07111F",
+            "image": "./assets/splash-logo.png"
+          }
         }
       ]
     ]
