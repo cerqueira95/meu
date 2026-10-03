@@ -22,7 +22,6 @@ export default function SearchPicker({
   hint,
   placeholder = 'Pesquisar...',
   emptyValue = '',
-  maxResults = 8,
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -64,8 +63,7 @@ export default function SearchPicker({
           .toLocaleLowerCase('pt-BR')
           .includes(q)
       })
-      .slice(0, maxResults)
-  }, [options, query, selectedValues, maxResults])
+  }, [options, query, selectedValues])
 
   function select(optionValue) {
     if (multiple) {
@@ -129,6 +127,7 @@ export default function SearchPicker({
               keyboardShouldPersistTaps="always"
               nestedScrollEnabled
               showsVerticalScrollIndicator
+              persistentScrollbar
             >
               {results.map((option) => (
                 <Pressable
@@ -223,7 +222,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   resultsScroll: {
-    maxHeight: 285,
+    maxHeight: 320,
   },
   resultRow: {
     minHeight: 50,
