@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
-  StyleSheet,
   Text,
   View,
 } from 'react-native'
@@ -10,13 +9,13 @@ import {
 } from '../api'
 import {
   Card,
-  Chip,
   ErrorBox,
   Field,
   PrimaryButton,
   SectionTitle,
 } from '../components/Ui'
 import PhotoField from '../components/PhotoField'
+import SearchPicker from '../components/SearchPicker'
 import UserPicker from '../components/UserPicker'
 import { colors } from '../theme'
 
@@ -45,6 +44,7 @@ export default function SeparacaoForm({ activity, onSuccess }) {
     try {
       const response = await loadActivity(activity.rota)
       setData(response)
+
       if (response?.tipos?.length === 1) {
         setTypeKey(response.tipos[0].chave)
       }
@@ -53,6 +53,13 @@ export default function SeparacaoForm({ activity, onSuccess }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  function changeType(value) {
+    setTypeKey(value)
+    setQuantity('')
+    setMapa('')
+    setPlaca('')
   }
 
   async function submit() {
@@ -104,7 +111,11 @@ export default function SeparacaoForm({ activity, onSuccess }) {
   }
 
   if (loading) {
-    return <Text style={{ textAlign: 'center', color: colors.muted }}>Carregando...</Text>
+    return (
+      <Text style={{ textAlign: 'center', color: colors.muted }}>
+        Carregando...
+      </Text>
+    )
   }
 
   return (
@@ -114,24 +125,19 @@ export default function SeparacaoForm({ activity, onSuccess }) {
       <Card style={{ marginBottom: 12 }}>
         <SectionTitle
           title="1. Tipo"
-          subtitle="O formulário muda automaticamente conforme a atividade."
+          subtitle="Pesquise a atividade. O restante do formulário muda automaticamente."
         />
 
-        <View style={styles.chips}>
-          {(data?.tipos || []).map((item) => (
-            <Chip
-              key={item.chave}
-              label={item.nome}
-              selected={typeKey === item.chave}
-              onPress={() => {
-                setTypeKey(item.chave)
-                setQuantity('')
-                setMapa('')
-                setPlaca('')
-              }}
-            />
-          ))}
-        </View>
+        <SearchPicker
+          options={(data?.tipos || []).map((item) => ({
+            value: item.chave,
+            label: item.nome,
+          }))}
+          value={typeKey}
+          onChange={changeType}
+          placeholder="Pesquisar tipo de separação..."
+          hint="Digite parte do nome para localizar."
+        />
       </Card>
 
       {!!selectedType && (
@@ -140,7 +146,9 @@ export default function SeparacaoForm({ activity, onSuccess }) {
             title="2. Dados do lançamento"
             subtitle={
               selectedType.valor_unitario !== undefined
-                ? `Valor unitário: R$ ${Number(selectedType.valor_unitario || 0).toFixed(2)}`
+                ? `Valor unitário: R$ ${Number(
+                    selectedType.valor_unitario || 0,
+                  ).toFixed(2)}`
                 : ''
             }
           />
@@ -198,10 +206,3 @@ export default function SeparacaoForm({ activity, onSuccess }) {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-})

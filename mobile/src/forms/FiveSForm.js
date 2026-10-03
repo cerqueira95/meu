@@ -10,13 +10,13 @@ import {
 } from '../api'
 import {
   Card,
-  Chip,
   ErrorBox,
   Field,
   PrimaryButton,
   SectionTitle,
 } from '../components/Ui'
 import PhotoField from '../components/PhotoField'
+import SearchPicker from '../components/SearchPicker'
 import UserPicker from '../components/UserPicker'
 import { colors } from '../theme'
 
@@ -45,14 +45,6 @@ export default function FiveSForm({ activity, onSuccess }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  function toggle(key) {
-    setSelected((current) =>
-      current.includes(key)
-        ? current.filter((item) => item !== key)
-        : [...current, key],
-    )
   }
 
   async function submit() {
@@ -100,18 +92,20 @@ export default function FiveSForm({ activity, onSuccess }) {
           <Card style={styles.block}>
             <SectionTitle
               title="1. Áreas executadas"
-              subtitle="Toque nas áreas que participaram deste 5S."
+              subtitle="Pesquise e selecione somente as áreas que participaram deste 5S."
             />
-            <View style={styles.chips}>
-              {(data?.opcoes || []).map((item) => (
-                <Chip
-                  key={item.chave}
-                  label={item.nome}
-                  selected={selected.includes(item.chave)}
-                  onPress={() => toggle(item.chave)}
-                />
-              ))}
-            </View>
+
+            <SearchPicker
+              options={(data?.opcoes || []).map((item) => ({
+                value: item.chave,
+                label: item.nome,
+              }))}
+              value={selected}
+              onChange={setSelected}
+              multiple
+              placeholder="Pesquisar área..."
+              hint="Digite parte do nome da área para localizar rapidamente."
+            />
           </Card>
 
           {selected.length > 0 && (
@@ -143,9 +137,10 @@ export default function FiveSForm({ activity, onSuccess }) {
 
           <Card style={styles.block}>
             <SectionTitle
-              title="3. Participantes"
+              title={selected.length > 0 ? '3. Participantes' : '2. Participantes'}
               subtitle="Você já entra automaticamente como principal."
             />
+
             <UserPicker
               users={data?.usuarios || []}
               selected={helpers}
@@ -178,10 +173,6 @@ export default function FiveSForm({ activity, onSuccess }) {
 const styles = StyleSheet.create({
   block: {
     marginBottom: 12,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
   },
   loading: {
     textAlign: 'center',

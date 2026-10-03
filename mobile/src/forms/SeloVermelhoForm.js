@@ -11,7 +11,6 @@ import {
 } from '../api'
 import {
   Card,
-  Chip,
   ErrorBox,
   Field,
   PrimaryButton,
@@ -19,7 +18,8 @@ import {
   SectionTitle,
 } from '../components/Ui'
 import PhotoField from '../components/PhotoField'
-import { colors, radius } from '../theme'
+import SearchPicker from '../components/SearchPicker'
+import { colors } from '../theme'
 
 const EMPTY_ITEM = {
   embalagem: '',
@@ -73,18 +73,22 @@ export default function SeloVermelhoForm({ activity, onSuccess }) {
 
     for (let i = 0; i < items.length; i += 1) {
       const item = items[i]
+
       if (!item.embalagem) {
         setError(`Selecione a embalagem do item ${i + 1}.`)
         return
       }
+
       if (Number(item.quantidade_plts || 0) <= 0) {
         setError(`Informe os PLTs do item ${i + 1}.`)
         return
       }
+
       if (!item.motivo_anomalia) {
         setError(`Selecione o motivo do item ${i + 1}.`)
         return
       }
+
       if (item.motivo_anomalia === 'OUTROS' && !item.motivo_outros.trim()) {
         setError(`Descreva o motivo do item ${i + 1}.`)
         return
@@ -116,7 +120,11 @@ export default function SeloVermelhoForm({ activity, onSuccess }) {
   }
 
   if (loading) {
-    return <Text style={{ textAlign: 'center', color: colors.muted }}>Carregando...</Text>
+    return (
+      <Text style={{ textAlign: 'center', color: colors.muted }}>
+        Carregando...
+      </Text>
+    )
   }
 
   return (
@@ -134,17 +142,17 @@ export default function SeloVermelhoForm({ activity, onSuccess }) {
             )}
           </View>
 
-          <Text style={styles.label}>Embalagem</Text>
-          <View style={styles.chips}>
-            {(data?.embalagens || []).map((value) => (
-              <Chip
-                key={value}
-                label={value}
-                selected={item.embalagem === value}
-                onPress={() => updateItem(index, { embalagem: value })}
-              />
-            ))}
-          </View>
+          <SearchPicker
+            label="Embalagem"
+            options={(data?.embalagens || []).map((value) => ({
+              value,
+              label: value,
+            }))}
+            value={item.embalagem}
+            onChange={(value) => updateItem(index, { embalagem: value })}
+            placeholder="Pesquisar embalagem..."
+            hint="Digite para localizar e selecionar."
+          />
 
           <Field
             label="Quantidade de PLTs"
@@ -158,23 +166,23 @@ export default function SeloVermelhoForm({ activity, onSuccess }) {
             keyboardType="number-pad"
           />
 
-          <Text style={styles.label}>Motivo da anomalia</Text>
-          <View style={styles.chips}>
-            {(data?.motivos || []).map((value) => (
-              <Chip
-                key={value}
-                label={value}
-                selected={item.motivo_anomalia === value}
-                onPress={() =>
-                  updateItem(index, {
-                    motivo_anomalia: value,
-                    motivo_outros:
-                      value === 'OUTROS' ? item.motivo_outros : '',
-                  })
-                }
-              />
-            ))}
-          </View>
+          <SearchPicker
+            label="Motivo da anomalia"
+            options={(data?.motivos || []).map((value) => ({
+              value,
+              label: value,
+            }))}
+            value={item.motivo_anomalia}
+            onChange={(value) =>
+              updateItem(index, {
+                motivo_anomalia: value,
+                motivo_outros:
+                  value === 'OUTROS' ? item.motivo_outros : '',
+              })
+            }
+            placeholder="Pesquisar motivo..."
+            hint="Digite para localizar e selecionar."
+          />
 
           {item.motivo_anomalia === 'OUTROS' && (
             <Field
@@ -234,16 +242,5 @@ const styles = StyleSheet.create({
     color: colors.red,
     fontSize: 11,
     fontWeight: '900',
-  },
-  label: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
   },
 })

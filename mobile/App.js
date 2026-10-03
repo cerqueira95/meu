@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
-  SafeAreaView,
   StyleSheet,
   Text,
+  View,
 } from 'react-native'
 import {
   clearAuthToken,
@@ -20,9 +20,10 @@ import LoginScreen from './src/screens/LoginScreen'
 import LauncherScreen from './src/screens/LauncherScreen'
 import ActivitiesScreen from './src/screens/ActivitiesScreen'
 import ActivityScreen from './src/screens/ActivityScreen'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { colors } from './src/theme'
 
-export default function App() {
+function AppContent() {
   const [booting, setBooting] = useState(true)
   const [user, setUser] = useState(null)
   const [screen, setScreen] = useState({ name: 'launcher' })
@@ -73,10 +74,10 @@ export default function App() {
 
   if (booting) {
     return (
-      <SafeAreaView style={styles.boot}>
+      <View style={styles.boot}>
         <ActivityIndicator size="large" color={colors.blue} />
         <Text style={styles.bootText}>Abrindo Warehouse...</Text>
-      </SafeAreaView>
+      </View>
     )
   }
 
@@ -110,6 +111,14 @@ export default function App() {
       onOpenActivities={() => setScreen({ name: 'activities' })}
       onLogout={handleLogout}
     />
+  )
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   )
 }
 

@@ -5,13 +5,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors, radius } from '../theme'
 
 export function Screen({
@@ -92,7 +92,7 @@ export function Field({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#9FB3C8"
+        placeholderTextColor={colors.placeholder}
         keyboardType={keyboardType}
         secureTextEntry={secureTextEntry}
         autoCapitalize={autoCapitalize}
@@ -147,7 +147,7 @@ export function SecondaryButton({
       style={({ pressed }) => [
         styles.secondaryButton,
         compact && styles.secondaryCompact,
-        danger && { borderColor: '#F3B6B6', backgroundColor: colors.redSoft },
+        danger && { borderColor: colors.red, backgroundColor: colors.redSoft },
         pressed && { opacity: 0.8 },
       ]}
     >
@@ -248,12 +248,14 @@ export const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.blueSoft,
+    borderWidth: 1,
+    borderColor: colors.blue,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoMarkText: {
-    color: colors.white,
+    color: colors.blue,
     fontSize: 20,
     fontWeight: '900',
   },
@@ -268,7 +270,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerBackText: {
-    color: colors.navy,
+    color: colors.text,
     fontSize: 34,
     lineHeight: 34,
     marginTop: -3,
@@ -338,7 +340,7 @@ export const styles = StyleSheet.create({
     minHeight: 42,
   },
   secondaryButtonText: {
-    color: colors.navy,
+    color: colors.text,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -375,7 +377,7 @@ export const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: colors.blueSoft,
-    borderColor: '#9BC2E8',
+    borderColor: colors.blue,
   },
   chipText: {
     color: colors.text,
@@ -390,7 +392,7 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: colors.redSoft,
     borderWidth: 1,
-    borderColor: '#F5C2C2',
+    borderColor: colors.red,
     marginBottom: 14,
   },
   errorText: {
@@ -434,7 +436,7 @@ export const styles = StyleSheet.create({
     width: '100%',
     height: 180,
     borderRadius: radius.md,
-    backgroundColor: '#E9EFF5',
+    backgroundColor: colors.input,
     marginBottom: 10,
   },
 })

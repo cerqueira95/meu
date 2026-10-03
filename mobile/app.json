@@ -5,7 +5,16 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "warehouse",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "androidStatusBar": {
+      "backgroundColor": "#07111F",
+      "barStyle": "light-content",
+      "translucent": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#07111F",
+      "barStyle": "light-content"
+    },
     "android": {
       "package": "com.nexlog.warehouse",
       "permissions": ["CAMERA"]
