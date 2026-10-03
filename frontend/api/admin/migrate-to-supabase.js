@@ -407,6 +407,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ status: 'ok', action })
     }
 
+    if (action === 'users-check') {
+      const rows = await source`
+        SELECT
+          COUNT(*)::bigint AS total,
+          COUNT(*) FILTER (WHERE cpf IS NULL)::bigint AS cpf_null,
+          COUNT(*) FILTER (WHERE BTRIM(COALESCE(cpf, '')) = '')::bigint AS cpf_empty
+        FROM usuarios
+      `
+
+      return res.status(200).json({
+        status: 'ok',
+        action,
+        total: Number(rows[0]?.total || 0),
+        cpfNull: Number(rows[0]?.cpf_null || 0),
+        cpfEmpty: Number(rows[0]?.cpf_empty || 0),
+      })
+    }
+
     if (action === 'users') {
       const copied = await migrateUsers(source)
       return res.status(200).json({ status: 'ok', action, copied })
