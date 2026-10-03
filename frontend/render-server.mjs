@@ -60,6 +60,7 @@ const routes = new Map([
   ['/api/wallet/task-details', './api/wallet/task-details.js'],
   ['/api/admin/remuneration', './api/admin/remuneration.js'],
   ['/api/admin/migration-status', './api/admin/migration-status.js'],
+  ['/api/admin/migrate-to-supabase', './api/admin/migrate-to-supabase.js'],
   ['/api/picking-studio', './api/picking-studio/index.js'],
   ['/api/wallet/caps', './api/wallet/caps.js'],
 ])
