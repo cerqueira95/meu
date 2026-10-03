@@ -1,3 +1,4 @@
+import { Artwork } from '../components/Artwork'
 import React, { useState } from 'react'
 import {
   StyleSheet,
@@ -49,6 +50,7 @@ export default function ActivityScreen({
         title={activity?.nome || 'Atividade'}
         subtitle="Lançamento operacional"
         onBack={onBack}
+        right={<Artwork name={activity?.chave} size={48} />}
       />
 
       {success ? (

@@ -1,3 +1,4 @@
+import { Artwork } from '../components/Artwork'
 import React, { useEffect, useMemo, useState } from 'react'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import {
@@ -153,6 +154,7 @@ export default function WalletScreen({ onBack }) {
         title="Carteira"
         subtitle="Resumo da remuneração no período"
         onBack={onBack}
+        right={<Artwork name="wallet" size={48} />}
       />
 
       <Card style={styles.filterCard}>

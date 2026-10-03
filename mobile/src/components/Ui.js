@@ -1,3 +1,4 @@
+import { BrandMark } from './Artwork'
 import React from 'react'
 import {
   ActivityIndicator,
@@ -59,9 +60,7 @@ export function Header({
             <Text style={styles.headerBackText}>‹</Text>
           </Pressable>
         ) : (
-          <View style={styles.logoMark}>
-            <Text style={styles.logoMarkText}>W</Text>
-          </View>
+          <BrandMark size={44} />
         )}
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>{title}</Text>

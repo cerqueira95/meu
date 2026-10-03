@@ -1,3 +1,4 @@
+import { Artwork } from '../components/Artwork'
 import React, { useEffect, useState } from 'react'
 import {
   Pressable,
@@ -12,16 +13,6 @@ import {
   Screen,
 } from '../components/Ui'
 import { colors, radius } from '../theme'
-
-const META = {
-  '5s': { code: '5S', accent: '#0F766E' },
-  amarracao: { code: 'AM', accent: '#9A3412' },
-  selo_vermelho: { code: 'SV', accent: '#B91C1C' },
-  separacao: { code: 'SP', accent: '#1D4ED8' },
-  retorno_rota: { code: 'RR', accent: '#7C3AED' },
-  integralizacao_devolucao: { code: 'ID', accent: '#0F766E' },
-  repack: { code: 'RP', accent: '#B45309' },
-}
 
 export default function ActivitiesScreen({
   onBack,
@@ -55,6 +46,7 @@ export default function ActivitiesScreen({
         title="Atividades"
         subtitle="Escolha o que você vai lançar"
         onBack={onBack}
+        right={<Artwork name="activities" size={48} />}
       />
 
       <ErrorBox message={error} />
@@ -74,11 +66,6 @@ export default function ActivitiesScreen({
 
       <View style={styles.grid}>
         {activities.map((item) => {
-          const meta = META[item.chave] || {
-            code: 'AT',
-            accent: colors.navy,
-          }
-
           return (
             <Pressable
               key={item.chave}
@@ -88,13 +75,8 @@ export default function ActivitiesScreen({
                 pressed && { opacity: 0.82 },
               ]}
             >
-              <View
-                style={[
-                  styles.icon,
-                  { backgroundColor: meta.accent },
-                ]}
-              >
-                <Text style={styles.iconText}>{meta.code}</Text>
+              <View style={styles.icon}>
+                <Artwork name={item.chave} size={72} />
               </View>
 
               <Text style={styles.title}>{item.nome}</Text>
@@ -156,17 +138,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   icon: {
-    width: 46,
-    height: 46,
+    width: 76,
+    height: 76,
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 13,
-  },
-  iconText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '900',
   },
   title: {
     color: colors.text,

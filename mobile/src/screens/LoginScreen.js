@@ -1,5 +1,7 @@
+import { BrandMark } from '../components/Artwork'
 import React, { useState } from 'react'
 import {
+  Image,
   StyleSheet,
   Text,
   View,
@@ -52,10 +54,9 @@ export default function LoginScreen({ onLogin }) {
 
   return (
     <Screen contentStyle={styles.content}>
+      <Image source={require('../../assets/brand/login-hero.png')} style={styles.hero} resizeMode="cover" accessible={false} />
       <View style={styles.brand}>
-        <View style={styles.brandMark}>
-          <Text style={styles.brandMarkText}>W</Text>
-        </View>
+        <BrandMark size={84} />
         <Text style={styles.title}>Warehouse</Text>
         <Text style={styles.subtitle}>Operação na palma da mão</Text>
       </View>
@@ -106,28 +107,22 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     justifyContent: 'center',
+    paddingTop: 16,
+  },
+  hero: {
+    width: '100%',
+    height: 150,
+    borderRadius: radius.lg,
+    marginBottom: 18,
   },
   brand: {
     alignItems: 'center',
-    marginBottom: 28,
-  },
-  brandMark: {
-    width: 78,
-    height: 78,
-    borderRadius: 24,
-    backgroundColor: colors.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  brandMarkText: {
-    color: colors.white,
-    fontSize: 37,
-    fontWeight: '900',
+    marginBottom: 22,
   },
   title: {
     color: colors.text,
     fontSize: 30,
+    marginTop: 8,
     fontWeight: '900',
   },
   subtitle: {

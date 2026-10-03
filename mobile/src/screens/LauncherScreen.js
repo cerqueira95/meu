@@ -1,3 +1,4 @@
+import { Artwork } from '../components/Artwork'
 import React from 'react'
 import {
   Pressable,
@@ -26,7 +27,7 @@ export default function LauncherScreen({
     <Screen>
       <Header
         title="Warehouse"
-        subtitle="Launcher operacional"
+        subtitle="Sua operação, conectada"
         right={
           <Pressable style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -54,7 +55,7 @@ export default function LauncherScreen({
         ]}
       >
         <View style={styles.moduleIcon}>
-          <Text style={styles.moduleIconText}>AT</Text>
+          <Artwork name="activities" size={70} />
         </View>
 
         <View style={{ flex: 1 }}>
@@ -76,7 +77,7 @@ export default function LauncherScreen({
         ]}
       >
         <View style={[styles.moduleIcon, styles.walletIcon]}>
-          <Text style={[styles.moduleIconText, styles.walletIconText]}>R$</Text>
+          <Artwork name="wallet" size={70} />
         </View>
 
         <View style={{ flex: 1 }}>
@@ -151,8 +152,8 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   moduleIcon: {
-    width: 58,
-    height: 58,
+    width: 72,
+    height: 72,
     borderRadius: 18,
     backgroundColor: colors.blueSoft,
     borderWidth: 1,
@@ -161,18 +162,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 14,
   },
-  moduleIconText: {
-    color: colors.blue,
-    fontSize: 18,
-    fontWeight: '900',
-  },
   walletIcon: {
     backgroundColor: colors.greenSoft,
     borderColor: colors.green,
-  },
-  walletIconText: {
-    color: colors.green,
-    fontSize: 16,
   },
   moduleTitle: {
     color: colors.text,

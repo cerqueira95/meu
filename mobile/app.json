@@ -2,10 +2,10 @@
   "expo": {
     "name": "Warehouse",
     "slug": "warehouse",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "orientation": "portrait",
     "scheme": "warehouse",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/brand/icon.png",
     "backgroundColor": "#07111F",
     "primaryColor": "#4F8CFF",
     "userInterfaceStyle": "dark",
@@ -14,9 +14,9 @@
     },
     "ios": {
       "bundleIdentifier": "com.nexlog.warehouse",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "supportsTablet": false,
-      "icon": "./assets/icon.png",
+      "icon": "./assets/brand/icon.png",
       "userInterfaceStyle": "dark"
     },
     "androidStatusBar": {
@@ -30,10 +30,10 @@
     },
     "android": {
       "package": "com.nexlog.warehouse",
-      "versionCode": 2,
-      "icon": "./assets/icon.png",
+      "versionCode": 3,
+      "icon": "./assets/brand/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/brand/adaptive-icon.png",
         "backgroundColor": "#07111F"
       },
       "permissions": [
@@ -60,12 +60,12 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#07111F",
-          "image": "./assets/splash-logo.png",
+          "image": "./assets/brand/adaptive-icon.png",
           "imageWidth": 220,
           "resizeMode": "contain",
           "dark": {
             "backgroundColor": "#07111F",
-            "image": "./assets/splash-logo.png"
+            "image": "./assets/brand/adaptive-icon.png"
           }
         }
       ],
