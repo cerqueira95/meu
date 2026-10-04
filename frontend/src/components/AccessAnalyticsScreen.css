@@ -67,7 +67,7 @@
 
 .access-analytics-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0,1fr));
+  grid-template-columns: repeat(3, minmax(0,1fr));
   gap: 12px;
 }
 
@@ -275,4 +275,9 @@
   .access-analytics-cards {
     grid-template-columns: 1fr;
   }
+}
+
+
+.access-analytics-cards article.download-metric-card::before {
+  background: #12b76a;
 }
