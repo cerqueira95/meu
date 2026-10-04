@@ -21,6 +21,20 @@ import PickingStudioScreen from './components/PickingStudioScreen.jsx'
 import './components/DashboardHighlights.css'
 
 const QUICK_ACCESS_KEY = 'warehouse_quick_access'
+const APP_DOWNLOAD_CLIENT_KEY = 'warehouse_app_download_client'
+
+function getAppDownloadClientId() {
+  try {
+    let value = window.localStorage.getItem(APP_DOWNLOAD_CLIENT_KEY)
+    if (!value) {
+      value = window.crypto?.randomUUID?.() || ('device-' + Date.now() + '-' + Math.random().toString(36).slice(2))
+      window.localStorage.setItem(APP_DOWNLOAD_CLIENT_KEY, value)
+    }
+    return value
+  } catch {
+    return 'browser-' + Math.random().toString(36).slice(2)
+  }
+}
 
 function readQuickAccess() {
   try {
@@ -201,6 +215,15 @@ function LoginScreen({ onLogin }) {
     storeQuickAccess(null)
     setQuickAccess(null)
     setError('')
+  }
+
+  function recordAppDownload() {
+    api.post('/api/analytics/downloads', {
+      client_id: getAppDownloadClientId(),
+      versao: '0.3.0',
+    }).catch(() => {
+      // O download não deve ser bloqueado se a telemetria falhar.
+    })
   }
 
   return (
@@ -400,6 +423,7 @@ function LoginScreen({ onLogin }) {
               href="https://raw.githubusercontent.com/cerqueira95/meu/apk-test/Warehouse-App-Teste.apk?v=0.3.0"
               target="_blank"
               rel="noreferrer"
+              onClick={recordAppDownload}
             >
               Baixar app
               <span aria-hidden="true">↓</span>
