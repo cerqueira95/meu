@@ -45,10 +45,15 @@ export default function AccessAnalyticsScreen() {
     setLoading(true)
     setError('')
     try {
-      const result = await api.get(
-        '/api/analytics/access?from=' + encodeURIComponent(start) + '&to=' + encodeURIComponent(end),
-      )
-      setData(result)
+      const [result, downloads] = await Promise.all([
+        api.get(
+          '/api/analytics/access?from=' + encodeURIComponent(start) + '&to=' + encodeURIComponent(end),
+        ),
+        api.get(
+          '/api/analytics/downloads?from=' + encodeURIComponent(start) + '&to=' + encodeURIComponent(end),
+        ),
+      ])
+      setData({ ...result, downloads })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -111,6 +116,16 @@ export default function AccessAnalyticsScreen() {
           <span>PESSOAS NO PERÍODO</span>
           <strong>{Number(data?.resumo?.usuarios_unicos || 0).toLocaleString('pt-BR')}</strong>
           <small>usuários diferentes no período</small>
+        </article>
+        <article className="download-metric-card">
+          <span>DOWNLOADS DO APP</span>
+          <strong>{Number(data?.downloads?.resumo?.downloads || 0).toLocaleString('pt-BR')}</strong>
+          <small>downloads entre {dateLabel(from)} e {dateLabel(to)}</small>
+        </article>
+        <article className="download-metric-card">
+          <span>DISPOSITIVOS ÚNICOS</span>
+          <strong>{Number(data?.downloads?.resumo?.dispositivos_unicos || 0).toLocaleString('pt-BR')}</strong>
+          <small>estimativa por navegador/dispositivo</small>
         </article>
       </div>
 
