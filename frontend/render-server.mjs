@@ -27,6 +27,7 @@ const routes = new Map([
   ['/api/access-requests', './api/access-requests/index.js'],
   ['/api/operator-tasks', './api/operator-tasks/index.js'],
   ['/api/analytics/access', './api/analytics/access.js'],
+  ['/api/analytics/downloads', './api/analytics/downloads.js'],
   ['/api/highlights', './api/highlights/index.js'],
   ['/api/profile/photo', './api/profile/photo.js'],
   ['/api/media/upload', './api/media/upload.js'],
