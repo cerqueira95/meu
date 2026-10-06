@@ -11,6 +11,7 @@ import {
   saveWmsTaskCollection,
   saveWmsTaskFailure,
 } from './wms-tasks.js'
+import { saveOperatorTasks } from './operator-tasks.js'
 
 export async function collectWmsTasksD1D0() {
   const today = currentBahiaDate()
@@ -38,7 +39,18 @@ export async function collectWmsTasksD1D0() {
         source: report.source,
         rows: report.rows,
       })
-      results.push(saved)
+
+      // Mantém a coleta automática idêntica ao botão manual de Tarefas dos Operadores:
+      // usa o mesmo relatório do WMS e a mesma rotina de vínculo/valores por operador.
+      const operatorSaved = await saveOperatorTasks({
+        date,
+        rows: report.rows,
+      })
+
+      results.push({
+        ...saved,
+        operatorTasks: operatorSaved,
+      })
     } catch (error) {
       try {
         await saveWmsTaskFailure({
