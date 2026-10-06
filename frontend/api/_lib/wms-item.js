@@ -96,7 +96,13 @@ export async function saveItemCollection({ date, source, rows }) {
         x.usuario_login,
         x.usuario_nome,
         NOW()
-      FROM jsonb_to_recordset(${JSON.stringify(payload)}::jsonb) AS x(
+      FROM jsonb_to_recordset(
+        CASE
+          WHEN jsonb_typeof(${JSON.stringify(payload)}::jsonb) = 'array'
+            THEN ${JSON.stringify(payload)}::jsonb
+          ELSE '[]'::jsonb
+        END
+      ) AS x(
         mapa text,
         palete text,
         entrega text,
