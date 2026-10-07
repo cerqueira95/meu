@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart TV Player</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main id="app">
+  <section id="home" class="screen active">
+    <div class="ambient a1"></div><div class="ambient a2"></div>
+    <div class="logo"><span>SMART</span><b>PLAY</b><small>TV</small></div>
+    <div class="menu">
+      <button class="focusable tile" data-action="channels"><span class="icon">TV</span><strong>TV ao Vivo</strong></button>
+      <button class="focusable tile" data-action="movies"><span class="icon">FILM</span><strong>Filmes</strong></button>
+      <button class="focusable tile" data-action="series"><span class="icon">SER</span><strong>S&eacute;ries</strong></button>
+      <button class="focusable tile" data-action="playlists"><span class="icon">LIST</span><strong>Playlists</strong></button>
+      <button class="focusable tile" data-action="settings"><span class="icon">CFG</span><strong>Configura&ccedil;&otilde;es</strong></button>
+    </div>
+    <button class="focusable refresh" data-action="reload"><span>&#8635;</span> Atualizar</button>
+    <div class="footer">
+      <div><b>Vers&atilde;o 0.7.8</b><span id="license">Licen&ccedil;a: demonstra&ccedil;&atilde;o</span></div>
+      <div class="device"><span id="status">TV n&atilde;o vinculada</span><b>ID: TV-DEMO</b></div>
+    </div>
+  </section>
+
+  <section id="playlists" class="screen inner playlist-screen">
+    <div class="playlist-wrap">
+      <h2 id="playlistFormTitle">Adicionar playlist</h2>
+      <div class="source-tabs">
+        <button class="focusable source-tab active-tab" data-source="m3u">Playlist M3U / M3U8</button>
+        <button class="focusable source-tab" data-source="xtream">Xtream Account</button>
+      </div>
+      <div id="m3uForm" class="source-form active-form">
+        <label>Nome da playlist<input class="focusable field" id="m3uName" type="text" placeholder="Minha playlist"></label>
+        <label>URL da playlist<input class="focusable field" id="m3uUrl" type="url" placeholder="https://exemplo.com/lista.m3u"></label>
+      </div>
+      <div id="xtreamForm" class="source-form">
+        <label>Nome da playlist<input class="focusable field" id="xtreamName" type="text" placeholder="Minha conta"></label>
+        <label>Servidor<input class="focusable field" id="xtreamServer" type="url" placeholder="https://servidor.exemplo.com"></label>
+        <div class="form-row">
+          <label>Usu&aacute;rio<input class="focusable field" id="xtreamUser" type="text"></label>
+          <label>Senha<input class="focusable field" id="xtreamPass" type="password"></label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="focusable back" data-action="cancelPlaylistEdit">Cancelar</button>
+        <button class="focusable back test-form" data-action="testPlaylistForm">Testar</button>
+        <button id="playlistSaveButton" class="focusable save" data-action="savePlaylist">Adicionar</button>
+      </div>
+      <p id="playlistMessage" class="playlist-message"></p>
+      <div class="saved-section">
+        <div class="saved-heading"><h3>Playlists adicionadas</h3><span id="savedCount">0</span></div>
+        <div id="savedPlaylists" class="saved-playlists"></div>
+      </div>
+    </div>
+    <aside class="web-add">
+      <div class="qr-placeholder"><span>QR</span><small>Ser&aacute; gerado pelo painel web</small></div>
+      <h3>Prefere usar o celular?</h3>
+      <p>Escaneie o QR Code para adicionar a playlist pelo nosso site sem digitar URLs usando o controle remoto.</p>
+      <div class="tv-code">C&oacute;digo da TV: <b id="tvPairCode">------</b></div>
+    </aside>
+  </section>
+
+  <section id="channels" class="screen browser-screen">
+    <header class="browser-header">
+      <div><p class="eyebrow">MINHA LISTA</p><h2 id="browserTitle">TV ao Vivo</h2></div>
+      <div class="browser-head-actions"><span id="activeSourceLabel"></span><button class="focusable browser-back" data-action="back">&larr; Voltar</button></div>
+    </header>
+    <div class="browser-layout">
+      <aside class="category-panel">
+        <button class="focusable category-button active-category" data-action="categoryAll"><span>ALL</span><b>Todos</b><em id="allCount">0</em></button>
+        <button class="focusable category-button" data-action="categoryFavorites"><span>&#9733;</span><b>Favoritos</b><em id="favoriteCount">0</em></button>
+        <button id="continueCategory" class="focusable category-button" data-action="categoryContinue"><span>&#9654;</span><b>Continuar</b><em id="continueCount">0</em></button>
+        <button class="focusable category-button" data-action="categorySearch"><span>BUS</span><b>Buscar</b><em></em></button>
+        <div id="categoryList" class="category-list"></div>
+      </aside>
+      <section class="item-panel">
+        <div class="item-toolbar"><span id="currentCategoryLabel">Todos</span><span id="itemCount">0 itens</span></div>
+        <div id="searchBox" class="search-box"><input id="browserSearch" class="focusable" type="text" placeholder="Buscar conte&uacute;do..."></div>
+        <div id="channelGrid" class="content-list"></div>
+      </section>
+      <aside class="preview-panel">
+        <div id="previewMedia" class="preview-media">
+          <video id="previewVideo" playsinline preload="none"></video>
+          <div id="previewLogo" class="preview-logo"><span>&#9654;</span></div>
+          <div id="previewState" class="preview-state">Selecione um canal</div>
+        </div>
+        <p id="previewKind" class="preview-kind">SMART PLAY TV</p>
+        <h3 id="previewTitle">Selecione um item</h3>
+        <p id="previewGroup">Escolha uma categoria e um conte&uacute;do para ver os detalhes.</p>
+        <div id="epgBox" class="epg-box">
+          <div><small>AGORA</small><strong id="epgNow">Programa&ccedil;&atilde;o n&atilde;o dispon&iacute;vel</strong><span id="epgMeta" class="epg-meta"></span><div class="epg-progress"><i id="epgProgress"></i></div></div>
+          <div><small>DEPOIS</small><strong id="epgNext">&mdash;</strong></div>
+        </div>
+        <button id="favoriteSelected" class="focusable favorite-selected" data-action="toggleFavorite" disabled>&#9734; Favoritar</button>
+        <button id="previewSelected" class="focusable preview-selected" data-action="previewSelected" disabled>&#9654; Pr&eacute;-visualizar</button>
+        <button id="playSelected" class="focusable play-selected" data-action="playSelected" disabled>Tela cheia</button>
+      </aside>
+    </div>
+  </section>
+
+  <section id="movieDetail" class="screen movie-detail-screen">
+    <header class="movie-detail-header">
+      <div><p class="eyebrow">FILMES</p><h2 id="movieDetailTitle">Filme</h2></div>
+      <button class="focusable browser-back" data-action="back">&larr; Voltar</button>
+    </header>
+    <div class="movie-detail-layout">
+      <aside class="movie-detail-poster-wrap">
+        <div id="movieDetailPoster" class="movie-detail-poster"><span>F</span></div>
+      </aside>
+      <section class="movie-detail-content">
+        <p id="movieDetailGroup" class="movie-detail-group">Categoria</p>
+        <h3 id="movieDetailName">Filme</h3>
+        <p id="movieDetailMeta" class="movie-detail-meta"></p>
+        <p id="movieDetailPlot" class="movie-detail-plot"></p>
+        <div id="movieDetailProgressWrap" class="movie-detail-progress-wrap">
+          <span id="movieDetailProgressText">Ainda não iniciado</span>
+          <div class="movie-detail-progress"><i id="movieDetailProgress"></i></div>
+        </div>
+        <div class="movie-detail-actions">
+          <button id="movieDetailPlay" class="focusable play-selected" data-action="playMovieDetail">&#9654; Assistir</button>
+          <button id="movieDetailFavorite" class="focusable favorite-selected" data-action="favoriteMovieDetail">&#9734; Favoritar</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section id="seriesDetail" class="screen series-detail-screen">
+    <header class="series-detail-header">
+      <div><p class="eyebrow">S&Eacute;RIES</p><h2 id="seriesDetailTitle">S&eacute;rie</h2></div>
+      <button class="focusable browser-back" data-action="back">&larr; Voltar</button>
+    </header>
+    <div class="series-detail-layout">
+      <aside class="series-hero">
+        <div id="seriesDetailCover" class="series-cover"><span>S</span></div>
+        <h3 id="seriesDetailName">S&eacute;rie</h3>
+        <p id="seriesDetailGroup">Categoria</p>
+        <p id="seriesDetailMeta" class="series-meta"></p>
+        <p id="seriesDetailPlot" class="series-plot"></p>
+        <button id="seriesContinue" class="focusable series-hero-action" data-action="continueSeries" disabled>&#9654; Continuar episódio</button>
+        <button id="seriesMarkEpisode" class="focusable series-hero-action" data-action="toggleEpisodeWatched" disabled>Marcar como assistido</button>
+        <button id="seriesIntroDuration" class="focusable series-hero-action" data-action="cycleIntroDuration">Pular abertura: 90s</button>
+      </aside>
+      <section class="series-content">
+        <div class="season-heading"><span>Temporadas</span><span id="seriesEpisodeCount">0 epis&oacute;dios</span></div>
+        <div id="seasonTabs" class="season-tabs"></div>
+        <div id="episodeList" class="episode-list"></div>
+      </section>
+    </div>
+  </section>
+
+  <section id="settings" class="screen settings-screen">
+    <header class="settings-header">
+      <div><p class="eyebrow">SMART PLAY TV</p><h2>Configura&ccedil;&otilde;es</h2></div>
+      <button class="focusable browser-back" data-action="back">&larr; Voltar</button>
+    </header>
+    <div class="settings-grid">
+      <section class="settings-card">
+        <h3>Reprodu&ccedil;&atilde;o</h3>
+        <label class="focusable setting-row" tabindex="0" role="switch" data-setting-target="smartBandwidth"><span><b>Economia inteligente</b><small>Pr&eacute;via usa menos banda; tela cheia mant&eacute;m qualidade autom&aacute;tica.</small></span><input id="smartBandwidth" class="setting-check" type="checkbox" tabindex="-1" checked></label>
+        <label class="focusable setting-row" tabindex="0" role="switch" data-setting-target="resumePlayback"><span><b>Retomar reprodu&ccedil;&atilde;o</b><small>Continua filmes e epis&oacute;dios de onde parou.</small></span><input id="resumePlayback" class="setting-check" type="checkbox" tabindex="-1" checked></label>
+        <label class="focusable setting-row" tabindex="0" role="switch" data-setting-target="previewAudio"><span><b>&Aacute;udio na pr&eacute;via</b><small>Desative para navegar sem som na janela pequena.</small></span><input id="previewAudio" class="setting-check" type="checkbox" tabindex="-1" checked></label>
+      </section>
+      <section class="settings-card">
+        <h3>Conex&atilde;o</h3>
+        <div class="settings-info"><span>Playlist ativa</span><b id="settingsPlaylist">Nenhuma</b></div>
+        <div class="settings-info"><span>Rede</span><b id="settingsNetwork">N&atilde;o testada</b></div>
+        <button class="focusable settings-action" data-action="testConnection">Testar conex&atilde;o</button>
+        <button class="focusable settings-action" data-action="refreshActive">Atualizar playlist ativa</button>
+      </section>
+      <section class="settings-card">
+        <h3>Aplicativo</h3>
+        <div class="settings-info"><span>Vers&atilde;o</span><b>0.7.8</b></div>
+        <div class="settings-info"><span>Modo</span><b>Player neutro</b></div>
+        <button class="focusable settings-action" data-action="clearCache">Limpar cache tempor&aacute;rio</button>
+        <p id="settingsMessage" class="settings-message"></p>
+      </section>
+    </div>
+  </section>
+
+  <section id="placeholder" class="screen inner">
+    <p class="eyebrow">SMART PLAY TV</p>
+    <h2 id="placeholderTitle">Em desenvolvimento</h2>
+    <p class="muted">Esta &aacute;rea j&aacute; faz parte da navega&ccedil;&atilde;o do aplicativo e ser&aacute; conectada ao cat&aacute;logo do usu&aacute;rio.</p>
+    <button class="focusable back" data-action="back">&larr; Voltar</button>
+  </section>
+
+  <section id="player" class="screen player-screen">
+    <video id="video" class="video-fit" controls autoplay playsinline preload="metadata"></video>
+    <div id="playerLoading" class="player-loading"><span></span><b>Carregando...</b></div>
+    <div id="playerError" class="player-error"><b>N&atilde;o foi poss&iacute;vel reproduzir.</b><button class="focusable" data-action="retryPlayer">Tentar novamente</button></div>
+    <button id="skipIntro" class="focusable skip-intro" data-action="skipIntro">Pular abertura</button>
+    <button id="nextEpisode" class="focusable next-episode" data-action="nextEpisode">Pr&oacute;ximo epis&oacute;dio</button>
+    <div class="player-topbar"><div><small id="playerKind">REPRODUZINDO</small><div id="nowPlaying" class="now-playing"></div></div><div class="player-top-actions"><button id="playerFitMode" class="focusable player-fit-button" data-action="cyclePlayerFit">Propor&ccedil;&atilde;o: Ajustar</button><button class="focusable floating-back" data-action="backChannels">&larr; Voltar</button></div></div>
+  </section>
+</main>
+<script src="js/hls.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
