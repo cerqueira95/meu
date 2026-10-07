@@ -108,7 +108,7 @@ async function fetchRemote(remoteUrl, probeOnly) {
       redirect: "follow",
       signal: controller.signal,
       headers: {
-        "User-Agent": "Mozilla/5.0 SmartPlayTV/0.7.4",
+        "User-Agent": "Mozilla/5.0 SmartPlayTV/1.0.0",
         "Accept": "*/*"
       }
     });
@@ -194,17 +194,29 @@ async function handleProxy(req, res, probeOnly) {
   }
 }
 
+const PRIVACY_HTML = "<!doctype html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Política de Privacidade - Smart Play TV</title>\n<style>\nbody{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 24px;line-height:1.6;color:#1b1b1b}\nh1,h2{color:#4b168c} .box{background:#f6f3fb;padding:16px 20px;border-radius:12px}\nsmall{color:#666}\n</style>\n</head>\n<body>\n<h1>Política de Privacidade — Smart Play TV</h1>\n<p><small>Última atualização: 7 de outubro de 2026</small></p>\n<p>O Smart Play TV é um reprodutor de mídia. O aplicativo não fornece canais, filmes, séries ou listas de reprodução. O usuário adiciona suas próprias fontes e é responsável por utilizar apenas conteúdo e serviços para os quais possua autorização.</p>\n<h2>Dados tratados</h2>\n<p>O aplicativo pode tratar endereços de playlists M3U/M3U8, endereço do servidor Xtream e credenciais Xtream fornecidas pelo próprio usuário para acessar a fonte escolhida. Configurações do aplicativo, favoritos, catálogo em cache e progresso de reprodução podem ser armazenados localmente na TV.</p>\n<h2>Credenciais</h2>\n<p>Credenciais Xtream não são gravadas na lista persistente do aplicativo. Elas são mantidas apenas durante a sessão do aplicativo para permitir consultas e reprodução e são descartadas ao encerrar ou recarregar o app.</p>\n<h2>Proxy de compatibilidade</h2>\n<p>Quando uma fonte não pode ser acessada diretamente pela TV, o Smart Play TV pode usar o serviço técnico smart-play-tv-proxy.onrender.com para testar ou obter a playlist. Nesse caso, a URL fornecida pelo usuário é transmitida ao proxy para executar a solicitação necessária. O proxy não possui função de publicidade, não vende dados e não cria perfis de usuários.</p>\n<h2>Compartilhamento</h2>\n<p>Não vendemos dados pessoais e não compartilhamos dados para publicidade comportamental. Dados técnicos podem transitar por provedores de infraestrutura estritamente para viabilizar a função solicitada pelo usuário.</p>\n<h2>Retenção</h2>\n<p>Dados locais permanecem na TV até serem removidos pelo usuário, pela limpeza dos dados do aplicativo ou pela desinstalação. Credenciais de sessão são descartadas ao encerrar ou recarregar o aplicativo. O proxy não foi projetado para armazenar playlists ou credenciais em banco de dados.</p>\n<h2>Segurança</h2>\n<p>O aplicativo utiliza HTTPS para comunicação com o proxy. O usuário deve preferir fontes HTTPS e manter suas credenciais privadas.</p>\n<h2>Seus controles</h2>\n<p>O usuário pode remover playlists, limpar cache/progresso local e desinstalar o aplicativo para eliminar dados armazenados localmente.</p>\n<h2>Contato</h2>\n<p>Dúvidas sobre privacidade: <a href=\"mailto:cerqueir95@gmail.com\">cerqueir95@gmail.com</a></p>\n<div class=\"box\"><strong>English summary:</strong> Smart Play TV is a media player and does not provide content. User-supplied playlist/server URLs and Xtream credentials may be processed to access the user's selected source. Settings, favorites, cached catalog data and playback progress may be stored locally on the TV. Xtream credentials are session-only and are not stored in the persistent playlist metadata. A compatibility proxy may process the supplied URL when direct access from the TV fails. Data is not sold or used for behavioral advertising.</div>\n</body>\n</html>";
+
 http.createServer((req, res) => {
   if (req.method === "OPTIONS") {
     res.writeHead(204, corsHeaders());
     return res.end();
   }
 
+  if (req.method === "GET" && (req.url === "/privacy" || req.url === "/privacy/")) {
+    res.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "public, max-age=300",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer"
+    });
+    return res.end(PRIVACY_HTML);
+  }
+
   if (req.method === "GET" && req.url === "/api/health") {
     return sendJson(res, 200, {
       ok: true,
       app: "Smart Play TV Proxy",
-      version: "0.7.4",
+      version: "1.0.0",
       timestamp: Date.now()
     });
   }
