@@ -29,6 +29,7 @@ const routes = new Map([
   ['/api/wms/collect', './api/wms/collect.js'],
   ['/api/logan/carta', './api/logan/carta.js'],
   ['/api/logan/justificativas', './api/logan/justificativas.js'],
+  ['/api/logan/sincronizar', './api/logan/sincronizar.js'],
   ['/api/escalonada', './api/escalonada/index.js'],
   ['/api/escalonada/read', './api/escalonada/read.js'],
   ['/api/escalonada/admin', './api/escalonada/admin.js'],

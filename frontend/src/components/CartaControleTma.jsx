@@ -101,7 +101,9 @@ function JustificativaModal({ linha, onClose, onSaved }) {
             </button>
           </div>
         </form>
-        {erro && <div role="alert" className="logan-alert logan-alert-error">{erro}</div>}
+        {retornoSync && <div className="logan-alert logan-sync-success" role="status">{retornoSync}</div>}
+    {erroSync && <div className="logan-alert logan-alert-warning" role="alert">{erroSync}</div>}
+    {erro && <div role="alert" className="logan-alert logan-alert-error">{erro}</div>}
         <div className="logan-history-title"><h3>Histórico de alterações</h3><span>{historico.length} registro(s)</span></div>
         {loading ? <p className="logan-muted">Carregando histórico…</p> : historico.length
           ? <ol className="logan-history">{historico.map((item, i) => <li key={i}>
@@ -164,6 +166,11 @@ export default function CartaControleTma() {
   const [sort, setSort] = useState({ key: 'tmaSegundos', desc: true })
   const [pagina, setPagina] = useState(1)
   const [porPagina, setPorPagina] = useState(10)
+  const [sincronizando, setSincronizando] = useState(false)
+  const [estadoColetor, setEstadoColetor] = useState(null)
+  const [retornoSync, setRetornoSync] = useState('')
+  const [erroSync, setErroSync] = useState('')
+
 
   useEffect(() => {
     let active = true
@@ -175,6 +182,29 @@ export default function CartaControleTma() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [inicio, fim, turno, revision])
+
+  useEffect(() => {
+    let mounted = true
+    api.get('/api/logan/sincronizar')
+      .then(result => { if (mounted) setEstadoColetor(result) })
+      .catch(() => { if (mounted) setEstadoColetor(null) })
+    return () => { mounted = false }
+  }, [])
+  async function sincronizarManual() {
+    if (sincronizando) return
+    setSincronizando(true)
+    setRetornoSync('')
+    setErroSync('')
+    try {
+      const response = await api.post('/api/logan/sincronizar')
+      setRetornoSync(response.message + ' Novos: ' + response.inseridos + '. Repetidos ignorados: ' + response.ignorados + '.')
+      setRevision(n => n + 1)
+    } catch (err) {
+      setErroSync(err.message || 'Falha ao tentar sincronizar o Logan.')
+    } finally {
+      setSincronizando(false)
+    }
+  }
 
   useEffect(() => { setPagina(1) }, [inicio, fim, turno, busca, statusFilter, porPagina])
   const filtered = useMemo(() => {
@@ -230,6 +260,11 @@ export default function CartaControleTma() {
           disabled={loading} title="Recarregar os dados já armazenados no banco">
           <span aria-hidden="true">↻</span> {loading ? 'Atualizando…' : 'Atualizar painel'}
         </button>
+        <button type="button" className="logan-pull" onClick={sincronizarManual}
+          disabled={sincronizando} aria-busy={sincronizando}
+          title="Solicita uma nova extração do Logan; não é uma simples atualização da tela">
+          <span aria-hidden="true">↧</span> {sincronizando ? 'Buscando no Logan…' : 'Puxar relatório Logan'}
+        </button>
       </div>
     </div>
 
@@ -243,6 +278,9 @@ export default function CartaControleTma() {
           <span>Horário da Bahia</span>
         </div>
         <span className="logan-sync-tag">Coleta automática pendente</span>
+        {estadoColetor && !estadoColetor.disponivel && <span className="logan-collector-note">
+          A captura autenticada ainda não está conectada. O botão informará essa pendência.
+        </span>}
       </div>
       {!data.conexaoSeparadaConfigurada && <div className="logan-alert logan-alert-warning">
         A conexão exclusiva do Logan ainda não está configurada neste servidor.

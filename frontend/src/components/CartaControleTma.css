@@ -338,3 +338,26 @@
 @media (prefers-reduced-motion: no-preference) {
   .logan-action, .logan-status-filters button, .logan-refresh { transition: background .16s, border-color .16s; }
 }
+
+/* Sincronização manual: independentemente do botão que apenas recarrega a tela. */
+.logan-pull {
+  min-height: 39px;
+  border: 1px solid #b7d6c6;
+  background: #eaf7f0;
+  color: #136848;
+  border-radius: 9px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 780;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.logan-pull:hover { background: #dbf1e4; border-color: #91c8a7; }
+.logan-pull:disabled { opacity: .55; cursor: wait; }
+.logan-pull span { margin-right: 5px; font-size: 17px; vertical-align: -1px; }
+.logan-sync-success { background: #ecf9f0; color: #17603e; border: 1px solid #addabf; }
+.logan-collector-note { font-size: 11px; color: #8c651a; }
+@media (max-width: 640px) {
+  .logan-pull { width: 100%; }
+  .logan-collector-note { width: 100%; }
+}
