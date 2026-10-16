@@ -25,7 +25,7 @@ function allowedClaims(claims, now) {
   if (claims.aud !== AUDIENCE && !(Array.isArray(claims.aud) && claims.aud.includes(AUDIENCE))) return false
   if (claims.repository !== REPOSITORY || String(claims.repository_id) !== REPOSITORY_ID) return false
   if (claims.ref !== 'refs/heads/main' || claims.workflow_ref !== WORKFLOW_REF) return false
-  if (!['schedule', 'workflow_dispatch'].includes(claims.event_name)) return false
+  if (!['schedule', 'workflow_dispatch', 'push'].includes(claims.event_name)) return false
   if (claims.sub !== 'repo:' + REPOSITORY + ':ref:refs/heads/main') return false
   const exp = Number(claims.exp), iat = Number(claims.iat), nbf = Number(claims.nbf ?? iat)
   if (![exp, iat, nbf].every(Number.isFinite)) return false
