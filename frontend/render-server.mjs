@@ -40,6 +40,7 @@ const routes = new Map([
   ['/api/wms/settings', './api/wms/settings.js'],
   ['/api/wms/test', './api/wms/test.js'],
   ['/api/wms/collect', './api/wms/collect.js'],
+  ['/api/farol', './api/farol/index.js'],
   ['/api/logan/carta', './api/logan/carta.js'],
   ['/api/logan/justificativas', './api/logan/justificativas.js'],
   ['/api/logan/sincronizar', './api/logan/sincronizar.js'],
