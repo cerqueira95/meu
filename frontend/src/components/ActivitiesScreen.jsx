@@ -1023,7 +1023,10 @@ function ApprovalsScreen({ onBack }) {
 
               <div className="activity-approval-metrics">
                 <div><span>Participantes</span><strong>{batch.quantidade_participantes}</strong></div>
-                <div><span>Áreas</span><strong>{batch.quantidade_areas}</strong></div>
+                <div>
+                  <span>{batch.atividade_chave === 'selo_vermelho' ? 'PLTs' : batch.atividade_chave?.startsWith('repack_') ? 'Caixas' : 'Áreas'}</span>
+                  <strong>{batch.atividade_chave === 'selo_vermelho' || batch.atividade_chave?.startsWith('repack_') ? batch.quantidade_calculo : batch.quantidade_areas}</strong>
+                </div>
                 <div><span>Por pessoa</span><strong>{money(batch.valor_individual)}</strong></div>
                 <div><span>Total grupo</span><strong>{money(batch.valor_grupo)}</strong></div>
               </div>
