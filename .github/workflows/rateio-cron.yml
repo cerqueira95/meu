@@ -5,20 +5,46 @@ on:
     - cron: "45,55 13 * * *"
     - cron: "5,15,25,35,45,55 14 * * *"
   workflow_dispatch:
+  # Execute once on workflow updates so the authenticated integration can be verified.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/rateio-cron.yml"
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  coletar-rateio:
+  coletar-wms:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
-      - name: Chamar coleta do Warehouse
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - name: Coletar Rateio e Tempo de Separação por Item
+        shell: bash
         run: |
-          test -n "$CRON_SECRET"
+          set -euo pipefail
+          token="$(curl --fail --silent --show-error --retry 2 \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=warehouse-orion-wms-cron" \
+            | python3 -c 'import json,sys;sys.stdout.write(json.load(sys.stdin)["value"])')"
+          test -n "$token"
           curl --fail --silent --show-error \
-            --retry 2 \
-            --retry-delay 15 \
-            --max-time 300 \
-            -H "Authorization: Bearer $CRON_SECRET" \
+            --retry 2 --retry-delay 15 --max-time 300 \
+            -H "Authorization: Bearer ${token}" \
             https://warehouse-orion.onrender.com/api/cron/rateio
+
+      - name: Coletar Tarefas WMS D-1 e D0
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(curl --fail --silent --show-error --retry 2 \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=warehouse-orion-wms-cron" \
+            | python3 -c 'import json,sys;sys.stdout.write(json.load(sys.stdin)["value"])')"
+          test -n "$token"
+          curl --fail --silent --show-error \
+            --retry 2 --retry-delay 15 --max-time 300 \
+            -H "Authorization: Bearer ${token}" \
+            https://warehouse-orion.onrender.com/api/cron/tarefas
