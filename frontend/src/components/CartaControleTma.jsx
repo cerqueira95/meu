@@ -194,8 +194,12 @@ export default function CartaControleTma() {
     setRetornoSync('')
     setErroSync('')
     try {
-      const request = await api.post('/api/logan/sincronizar')
-      setRetornoSync(request.message)
+      const request = await api.post('/api/logan/sincronizar', { inicio, fim })
+      const periodoRecebido = request.periodo
+      const mesmoPeriodo = periodoRecebido?.dateFrom === inicio && periodoRecebido?.dateTo === fim
+      setRetornoSync(request.message +
+        (mesmoPeriodo ? ' Período: ' + inicio.split('-').reverse().join('/') +
+          ' a ' + fim.split('-').reverse().join('/') + '.' : ''))
       setEstadoColetor(prev => ({ ...(prev || {}), ultimaSolicitacao: {
         id: request.id, estado: request.estado || 'pendente',
         mensagem: request.message, solicitadoEm: new Date().toISOString(),
@@ -206,8 +210,13 @@ export default function CartaControleTma() {
         setEstadoColetor(prev => ({ ...(prev || {}), ultimaSolicitacao: state }))
         if (state.estado === 'concluido') {
           const result = state.resultado || {}
-          setRetornoSync('Coleta concluída. Novos registros: ' + (result.inseridos || 0) +
-            '. Registros repetidos ignorados: ' + (result.ignorados || 0) + '.')
+          if (!mesmoPeriodo) {
+            setErroSync('Outra coleta terminou. Clique novamente para buscar o intervalo selecionado.')
+            return
+          }
+          setRetornoSync('Consulta de ' + inicio.split('-').reverse().join('/') + ' a ' +
+            fim.split('-').reverse().join('/') + ' concluída. Novos registros: ' +
+            (result.inseridos ?? 0) + '. Repetidos ignorados: ' + (result.ignorados ?? 0) + '.')
           setRevision(n => n + 1)
           return
         }
@@ -309,6 +318,10 @@ export default function CartaControleTma() {
             ? 'Concluída'
             : lastSync.estado === 'erro' ? 'Falhou'
             : lastSync.estado === 'executando' ? 'Em execução' : 'Aguardando agente'}
+          {lastSync.periodo && <>
+            {' · '}Período: {lastSync.periodo.dateFrom?.split('-').reverse().join('/')}
+            {' a '}{lastSync.periodo.dateTo?.split('-').reverse().join('/')}
+          </>}
           {lastSync.estado === 'concluido' && lastDetails && <>
             {' · '}<strong>{lastDetails.inseridos ?? 0} novos</strong>
             {' · '}{lastDetails.ignorados ?? 0} repetidos ignorados

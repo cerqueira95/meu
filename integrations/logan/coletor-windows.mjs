@@ -105,9 +105,36 @@ class Chrome {
   }
   await this.until('document.querySelectorAll(".ant-picker-dropdown:not(.ant-picker-dropdown-hidden) .ant-picker-cell").length>0','Calendário indisponível')
   for(const date of [period.dateFrom,period.dateTo]){
-   const ok=await this.eval(`(()=>{const e=[...document.querySelectorAll(".ant-picker-dropdown:not(.ant-picker-dropdown-hidden) .ant-picker-cell")].find(c=>c.title===${JSON.stringify(date)});if(!e)return false;e.querySelector(".ant-picker-cell-inner")?.click();return true})()`)
-   if(!ok)throw Error('Data fora do calendário visível: '+date)
-   await sleep(350)
+   let selected=false
+   // Ant Design displays two months. Navigate the calendar instead of assuming both dates
+   // belong to the current visible pair of months.
+   for(let turn=0;turn<36;turn++){
+    const state=await this.eval(`(()=>{
+      const picker=document.querySelector(".ant-picker-dropdown:not(.ant-picker-dropdown-hidden)")
+      if(!picker)return 'closed'
+      const panels=[...picker.querySelectorAll(".ant-picker-panel")]
+      if(!panels.length)return 'no-panels'
+      const target=${JSON.stringify(date)}
+      const cell=[...picker.querySelectorAll(".ant-picker-cell-in-view[title]")].find(c=>c.title===target)
+      if(cell){cell.querySelector(".ant-picker-cell-inner")?.click();return 'picked'}
+      const months=panels.map(panel=>panel.querySelector(".ant-picker-cell-in-view[title]")?.title?.slice(0,7)).filter(Boolean)
+      if(!months.length)return 'no-month'
+      const targetMonth=target.slice(0,7)
+      const backwards=targetMonth<months[0]
+      const forwards=targetMonth>months[months.length-1]
+      if(!backwards&&!forwards)return 'missing-day'
+      const panel=backwards?panels[0]:panels[panels.length-1]
+      const button=panel.querySelector(backwards?".ant-picker-header-prev-btn":".ant-picker-header-next-btn")
+      if(!button||button.disabled)return 'navigation-disabled'
+      button.click()
+      return 'advanced'
+    })()`)
+    if(state==='picked'){selected=true;break}
+    if(state!=='advanced')throw Error('Não foi possível selecionar '+date+' no calendário Logan ('+state+')')
+    await sleep(180)
+   }
+   if(!selected)throw Error('Navegação do calendário excedeu o limite para '+date)
+   await sleep(300)
   }
   const selected=await this.eval('[...document.querySelectorAll(".ant-picker-input input")].map(x=>x.value)')
   if(selected?.[0]!==br(period.dateFrom)||selected?.[1]!==br(period.dateTo))throw Error('Datas não foram confirmadas pelo Logan')
@@ -142,12 +169,12 @@ async function claim(){
  const rows=await sql`UPDATE logan_coletas SET estado='executando', iniciado_em=NOW(),
    agente='Chrome autorizado no Windows',mensagem='Extraindo os dois relatórios do Logan.'
    WHERE id=(SELECT id FROM logan_coletas WHERE estado='pendente' ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
-   RETURNING id`
+   RETURNING id,detalhes`
  return rows[0]||null
 }
 async function run(job){
  try{
-  const periodo=reportWindow()
+  const periodo=job.detalhes?.periodoSolicitado || reportWindow()
   const data=await collect(periodo)
   const saved=await persistCollectorPayload(data,periodo)
   await withTransaction(tx => tx`UPDATE logan_coletas SET estado='concluido', concluido_em=NOW(),
@@ -173,5 +200,18 @@ async function main(){
   await sleep(3500)
  }
 }
-await main()
+if (process.argv.includes('--test-calendar')) {
+ const c=await Chrome.open()
+ try {
+  await c.openReport(REPORTS[0])
+  const earlier={dateFrom:'2026-09-30',dateTo:'2026-10-01'}
+  await c.pickRange(earlier)
+  console.log('CROSS_MONTH_SELECTED',JSON.stringify(await c.eval('[...document.querySelectorAll(".ant-picker-input input")].map(x=>x.value)')))
+  const original={dateFrom:'2026-10-15',dateTo:'2026-10-16'}
+  await c.pickRange(original)
+  console.log('DATES_RESTORED',JSON.stringify(await c.eval('[...document.querySelectorAll(".ant-picker-input input")].map(x=>x.value)')))
+ } finally { c.close() }
+} else {
+ await main()
+}
 process.exit(0)
