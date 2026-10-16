@@ -1,5 +1,5 @@
 // Windows collector for authorized Logan Chrome session. Does not read cookies, passwords or tokens.
-import { sql } from '../../frontend/api/logan/_db.js'
+import { sql, withTransaction } from '../../frontend/api/logan/_db.js'
 import { reportWindow, persistCollectorPayload } from '../../frontend/api/logan/_sync.js'
 const CDP='http://127.0.0.1:9235'
 const sleep=ms=>new Promise(r=>setTimeout(r,ms))
@@ -150,10 +150,10 @@ async function run(job){
   const periodo=reportWindow()
   const data=await collect(periodo)
   const saved=await persistCollectorPayload(data,periodo)
-  await sql`UPDATE logan_coletas SET estado='concluido', concluido_em=NOW(),
+  await withTransaction(tx => tx`UPDATE logan_coletas SET estado='concluido', concluido_em=NOW(),
    mensagem='Coleta concluída sem duplicação de registros.',
-   detalhes=${JSON.stringify({...saved,periodo})}::jsonb
-   WHERE id=${job.id}`
+   detalhes=${tx.json({...saved,periodo})}
+   WHERE id=${job.id}`)
   console.log('COLETA_CONCLUIDA',JSON.stringify({id:Number(job.id),inseridos:saved.inseridos,ignorados:saved.ignorados}))
  }catch(error){
   const msg=String(error?.message||'Erro de coleta').slice(0,220)
