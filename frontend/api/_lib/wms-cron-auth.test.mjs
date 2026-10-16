@@ -40,6 +40,9 @@ test('supports legacy CRON_SECRET safely during migration',async()=>{
 test('accepts correctly signed and scoped GitHub identity',async()=>{
   assert.equal(await isAuthorizedWmsCron(req(jwt()),{env:{},fetcher:keys}),true)
 })
+test('accepts GitHub push to the workflow path on main for rollout',async()=>{
+  assert.equal(await isAuthorizedWmsCron(req(jwt({event_name:'push'})),{env:{},fetcher:keys}),true)
+})
 test('rejects wrong repository, branch, audience, workflow and event',async()=>{
   for(const patch of [
     {repository:'other/repo'}, {repository_id:'999'}, {aud:'another-app'},
