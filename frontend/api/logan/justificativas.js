@@ -1,6 +1,6 @@
 import { ensureJustificativasSchema } from './_schema.js'
 import { getSessionUser } from '../_lib/session.js'
-import { sql, withTransaction } from '../_lib/db.js'
+import { sql, withTransaction } from './_db.js'
 import { allowedTmaAdmin } from './carta.js'
 import { readCartaReport } from './_data.js'
 

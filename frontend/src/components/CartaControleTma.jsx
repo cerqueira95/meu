@@ -101,7 +101,7 @@ export default function CartaControleTma() {
     {loading && <p role="status">Atualizando relatório…</p>}
     {erro && <p role="alert" className="logan-warning">{erro}</p>}
     {data && <>
-      {data.semFonte && <p className="logan-warning">Base Logan não encontrada no banco desta instalação. A coleta automática está desligada.</p>}
+      {!data.conexaoSeparadaConfigurada && <p className="logan-warning">A conexão exclusiva do Logan ainda não está configurada no Render. A administração deve adicionar LOGAN_DATABASE_URL nas variáveis de ambiente. Nenhuma coleta automática está ativa.</p>}
       <p className="logan-warning">Dados da última importação: {data.ultimaImportacao ? new Date(data.ultimaImportacao).toLocaleString('pt-BR') : 'não disponível'}. A coleta automática ainda não está ativada.</p>
       <div className="logan-kpis">
         <article><span>Carretas</span><strong>{data.resumo.total}</strong></article>

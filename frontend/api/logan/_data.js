@@ -1,4 +1,4 @@
-import { sql } from '../_lib/db.js'
+import { sql } from './_db.js'
 import { cartaControle } from '../../../integrations/logan/carta-controle.mjs'
 
 // Snapshots may contain the same operation in overlapping files.

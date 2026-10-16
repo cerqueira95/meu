@@ -1,6 +1,6 @@
 import { ensureJustificativasSchema } from './_schema.js'
 import { getSessionUser } from '../_lib/session.js'
-import { sql } from '../_lib/db.js'
+import { sql } from './_db.js'
 import { readCartaReport } from './_data.js'
 
 const dateOk = value => /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -40,6 +40,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       status: 'ok', ...result, detalhes,
       semJustificativa: detalhes.filter(row => row.acimaMeta && !row.justificativa).length,
+      conexaoSeparadaConfigurada: Boolean(process.env.LOGAN_DATABASE_URL),
       provisorio: true,
       fonte: 'Dados importados; exportação automática do Logan ainda não ativada',
     })

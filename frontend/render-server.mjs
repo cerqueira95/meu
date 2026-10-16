@@ -299,4 +299,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log('Warehouse pronto em http://' + HOST + ':' + PORT)
+  import('./api/logan/_db.js')
+    .then(({ checkLoganConnection }) => checkLoganConnection())
+    .then((state) => console.log('logan_connection_check', state))
+    .catch((err) => console.error('logan_connection_check_failed', err?.code || 'unknown'))
+
 })
