@@ -114,6 +114,8 @@ export default function FarolOperacional() {
   const [search,setSearch]=useState('')
   const [metric,setMetric]=useState('paletes')
   const [sort,setSort]=useState('paletes')
+  const [syncing,setSyncing]=useState(false)
+  const [syncMessage,setSyncMessage]=useState('')
   async function load(period=applied) {
     setError('')
     setLoading(true)
@@ -124,6 +126,20 @@ export default function FarolOperacional() {
       setApplied(period)
     } catch (err) { setError(err?.message || 'Falha ao carregar o Farol do WMS.') }
     finally { setLoading(false) }
+  }
+  async function syncWms() {
+    setSyncMessage('')
+    setError('')
+    setSyncing(true)
+    try {
+      const result = await api.post('/api/wms/collect', {})
+      setSyncMessage(result.message || 'Coleta WMS concluída.')
+      await load()
+    } catch (err) {
+      setError(err?.message || 'Falha na coleta WMS. Verifique a integração nas configurações.')
+    } finally {
+      setSyncing(false)
+    }
   }
   useEffect(()=>{load(filters)},[]) // initial query only; subsequent filters are explicit
   function apply(event) {
@@ -153,7 +169,8 @@ export default function FarolOperacional() {
         <h1>Farol Operacional</h1>
         <p>Separação e carregamento — produtividade por operador, por hora e por período.</p></div>
       <div className="farol-heading-actions">
-        <button className="farol-secondary" type="button" disabled={loading} onClick={()=>load()}>↻ Atualizar dados</button>
+        <button className="farol-secondary" type="button" disabled={loading||syncing} onClick={()=>load()}>↻ Atualizar painel</button>
+        <button className="farol-secondary" type="button" disabled={loading||syncing} onClick={syncWms}>{syncing?'Buscando WMS...':'Sincronizar WMS'}</button>
         <button className="farol-primary" type="button" disabled={!data || loading} onClick={()=>downloadedCsv(data)}>↓ Exportar resumo</button>
       </div>
     </div>
@@ -165,6 +182,7 @@ export default function FarolOperacional() {
       <div className="farol-filters-caption">Períodos de até 31 dias</div>
     </form>
     {error&&<div className="farol-alert farol-alert-error" role="alert">{error}</div>}
+    {syncMessage&&<div className="farol-alert farol-alert-success" role="status">{syncMessage}</div>}
     {data&&<StatusNotice data={data}/>}
     {data?.qualidade?.limitado&&<div className="farol-alert farol-alert-warning" role="alert">Intervalo muito grande: parte dos registros excedeu o limite de consulta. Reduza o período para obter resultados completos.</div>}
     {data&&<div className="farol-metrics">
