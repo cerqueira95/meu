@@ -1,4 +1,5 @@
 import { sql } from '../_lib/db.js'
+import { isAuthorizedWmsCron } from '../_lib/wms-cron-auth.js'
 import { currentBahiaDate } from '../_lib/wms-client.js'
 import {
   collectCurrentRateio,
@@ -22,10 +23,7 @@ export default async function handler(req, res) {
     })
   }
 
-  const expected = String(process.env.CRON_SECRET || '')
-  const received = String(req.headers.authorization || '')
-
-  if (!expected || received !== `Bearer ${expected}`) {
+  if (!(await isAuthorizedWmsCron(req))) {
     return res.status(401).json({
       status: 'error',
       message: 'Cron não autorizado.',
