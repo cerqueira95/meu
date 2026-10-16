@@ -44,7 +44,7 @@ function Metric({ label, value, hint, type='neutral', icon='•' }) {
     <strong>{value}</strong><small>{hint}</small>
   </article>
 }
-function StatusNotice({ data }) {
+function StatusNotice({ data, onLatest }) {
   const last=data.qualidade?.ultimaData
   const today=todayBahia()
   const stale=!last || last < today
@@ -58,6 +58,7 @@ function StatusNotice({ data }) {
       <span>Paletes: dados WMS por item</span>
       <span className="is-pending">Pontuação: fonte pendente</span>
       <span className={data.qualidade?.tarefasDisponiveis?'is-ready':'is-pending'}>Tarefas: {data.qualidade?.tarefasDisponiveis?'disponíveis':'não integradas'}</span>
+      {stale && last && <button type="button" className="farol-last-day" onClick={onLatest}>Ver último dia disponível</button>}
     </div>
   </div>
 }
@@ -141,6 +142,13 @@ export default function FarolOperacional() {
       setSyncing(false)
     }
   }
+  function showLatestDate() {
+    const last=data?.qualidade?.ultimaData
+    if(!last)return
+    const period={inicio:last, fim:last, horaInicio:'00:00', horaFim:'23:59'}
+    setFilters(period)
+    load(period)
+  }
   useEffect(()=>{load(filters)},[]) // initial query only; subsequent filters are explicit
   function apply(event) {
     event.preventDefault()
@@ -183,7 +191,7 @@ export default function FarolOperacional() {
     </form>
     {error&&<div className="farol-alert farol-alert-error" role="alert">{error}</div>}
     {syncMessage&&<div className="farol-alert farol-alert-success" role="status">{syncMessage}</div>}
-    {data&&<StatusNotice data={data}/>}
+    {data&&<StatusNotice data={data} onLatest={showLatestDate}/>}
     {data?.qualidade?.limitado&&<div className="farol-alert farol-alert-warning" role="alert">Intervalo muito grande: parte dos registros excedeu o limite de consulta. Reduza o período para obter resultados completos.</div>}
     {data&&<div className="farol-metrics">
       <Metric label="PALETES IDENTIFICADOS" value={formatNumber(data.resumo.paletes)} hint="Paletes distintos por operador" type="teal" icon="▣"/>
