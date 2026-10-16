@@ -1,4 +1,5 @@
 import { sql } from './db.js'
+import { resolveActivityQuantityInfo } from './activity-quantity.js'
 import {
   applyWalletCap,
   ensureWalletSchema,
@@ -431,11 +432,12 @@ export async function buildLiveWalletData(userId, month) {
       SELECT
         l.id, l.data_atividade, l.atividade_nome, l.atividade_chave,
         COALESCE(p.valor_unitario, l.valor_unitario, 0)::numeric AS valor_unitario,
+        l.detalhes, l.observacao,
         COALESCE(
-          NULLIF(l.detalhes->>'quantidade_calculo', '')::numeric,
-          (SELECT COUNT(*)::numeric FROM atividade_lancamento_itens i WHERE i.lancamento_id = l.id),
-          1
-        )::numeric AS quantidade_calculo
+          (SELECT json_agg(i.opcao_nome ORDER BY i.id)
+           FROM atividade_lancamento_itens i WHERE i.lancamento_id = l.id),
+          '[]'::json
+        ) AS itens
       FROM atividade_lancamentos l
       INNER JOIN atividade_lancamento_participantes p
         ON p.lancamento_id = l.id
@@ -510,17 +512,26 @@ export async function buildLiveWalletData(userId, month) {
 
   for (const row of activityRows) {
     const unitValue = Number(row.valor_unitario || 0)
-    const quantity = Number(row.quantidade_calculo || 1)
+    const info = resolveActivityQuantityInfo(row)
+    const quantity = info.quantidade
     const date = isoDate(row.data_atividade)
+    const unitName = row.atividade_chave === 'selo_vermelho'
+      ? 'PLT(s)'
+      : String(row.atividade_chave || '').startsWith('repack_') ? 'caixa(s)' : 'unidade(s)'
     entries.push({
       id: `atividade-${row.id}`,
       data: date,
       tipo: 'atividade',
       titulo: row.atividade_nome,
-      detalhe: quantity === 0.5
-        ? 'Atividade aprovada • 50% do valor'
-        : 'Atividade aprovada',
+      detalhe: info.conferir
+        ? 'Atividade aprovada • quantidade histórica a conferir'
+        : quantity === 0.5
+          ? 'Atividade aprovada • 50% do valor'
+          : `Atividade aprovada • ${quantity} ${unitName}`,
       atividade_chave: row.atividade_chave,
+      quantidade: quantity,
+      valor_unitario: unitValue,
+      quantidade_pendente_conferencia: info.conferir,
       valor_original: roundMoney(unitValue * quantity),
     })
   }

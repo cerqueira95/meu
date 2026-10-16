@@ -1,4 +1,5 @@
 import { sql } from './db.js'
+import { resolveActivityQuantityInfo } from './activity-quantity.js'
 
 export const FIVE_S_OPTIONS = [
   ['rua-a', 'Rua A'],
@@ -222,7 +223,8 @@ async function createSchema() {
 
 export function serializeActivityBatch(row, participants = [], items = []) {
   const unitValue = Number(row.valor_unitario || 0)
-  const calculationQuantity = Number(row.detalhes?.quantidade_calculo || items.length)
+  const quantityInfo = resolveActivityQuantityInfo({ ...row, itens: items })
+  const calculationQuantity = quantityInfo.quantidade
   const participantValues = participants.map((participant) => {
     const participantUnitValue = Number(participant.valor_unitario ?? unitValue)
     return {
@@ -270,6 +272,9 @@ export function serializeActivityBatch(row, participants = [], items = []) {
       evidencia_foto: item.evidencia_foto || null,
     })),
     quantidade_areas: items.length,
+    quantidade_calculo: calculationQuantity,
+    quantidade_origem: quantityInfo.origem,
+    quantidade_pendente_conferencia: quantityInfo.conferir,
     quantidade_participantes: participants.length,
     valor_individual: individualTotal,
     valor_grupo: groupTotal,
