@@ -2,6 +2,8 @@ import { getSessionUser } from '../_lib/session.js'
 import { allowedTmaAdmin } from './carta.js'
 import { sql, withTransaction } from './_db.js'
 import { validateReportPeriod } from './_period.js'
+import { directApiStatus } from './_direct-api.js'
+import { startDirectQueue } from './_direct-worker.js'
 
 function originAllowed(req) {
   if (String(req.headers?.['sec-fetch-site'] || '').toLowerCase() === 'cross-site') return false
@@ -25,6 +27,7 @@ export default async function handler(req,res){
     const user=await getSessionUser(req)
     if(!user)return res.status(401).json({message:'Sessão não autenticada.'})
     if(!allowedTmaAdmin(user))return res.status(403).json({message:'Acesso administrativo necessário.'})
+    const direct = directApiStatus()
     if(req.method==='GET'){
       const id=String(req.query?.id||'')
       if(id&&!/^\d{1,17}$/.test(id))return res.status(400).json({message:'ID inválido.'})
@@ -37,8 +40,8 @@ export default async function handler(req,res){
       const latest=await sql`SELECT id,estado,mensagem,detalhes,solicitado_em,iniciado_em,concluido_em
           FROM logan_coletas ORDER BY id DESC LIMIT 1`
       return res.status(200).json({
-        status:'ok',preparado:true,disponivel:true,modo:'coletor_windows',
-        message:'O botão envia uma solicitação ao coletor autorizado no Windows. O computador e a sessão Logan devem estar disponíveis.',
+        status:'ok',preparado:true,disponivel:true,modo:direct.enabled?'api_render':'coletor_windows',
+        message:direct.enabled ? 'Consulta direta ao Logan pelo Render, sem computador.' : 'O botão continua usando o coletor Windows. O acesso oficial da API Logan ainda não foi configurado no Render.',
         ultimaSolicitacao:latest.length?output(latest[0]):null,
       })
     }
@@ -55,7 +58,7 @@ export default async function handler(req,res){
         WHERE estado IN ('pendente','executando') ORDER BY id LIMIT 1`
       if(existing.length)return existing[0]
       const created=await tx`INSERT INTO logan_coletas(origem,estado,solicitado_por,mensagem,detalhes)
-        VALUES('manual','pendente',${String(user.id||'')},'Aguardando coleta no Chrome autenticado.',
+        VALUES('manual','pendente',${String(user.id||'')},${direct.enabled?'Aguardando consulta de API no Render.':'Aguardando coleta no Chrome autenticado.'},
           ${tx.json({periodoSolicitado: periodo})})
         ON CONFLICT DO NOTHING RETURNING id,estado,solicitado_em,detalhes`
       if(created.length)return created[0]
@@ -64,13 +67,14 @@ export default async function handler(req,res){
       if(!concurrentlyCreated.length)throw Error('Não foi possível registrar a solicitação')
       return concurrentlyCreated[0]
     })
+    if(direct.enabled)startDirectQueue()
     const requested = job.detalhes?.periodoSolicitado || null
     const sameRange = requested?.dateFrom === periodo.dateFrom && requested?.dateTo === periodo.dateTo
     return res.status(202).json({status:'ok',id:Number(job.id),estado:job.estado,
       periodo: requested,
       message:!sameRange ? 'Já existe uma coleta de outro período em andamento. Aguarde antes de solicitar este intervalo.'
         : job.estado==='executando' ? 'A coleta deste intervalo já está em andamento.'
-        : 'Solicitação do período selecionado recebida. Aguardando o coletor autenticado no Windows.'})
+        : direct.enabled ? 'Solicitação recebida. A consulta direta à API Logan está iniciando no Render.' : 'Solicitação do período selecionado recebida. Aguardando o coletor autenticado no Windows.'})
   } catch (err) {
     console.error('logan_sync_queue_error',{code:err?.code||'unknown'})
     return res.status(503).json({message:'Não foi possível consultar a fila de sincronização. Tente novamente.'})
