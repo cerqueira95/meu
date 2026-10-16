@@ -142,9 +142,7 @@ export default function FarolOperacional() {
   },[data,search,sort])
   const hours=useMemo(()=>{
     const groups=new Map()
-    for(const item of data?.horas||[])groups.set(item.hora,{...item,byName:{}})
-    // The API aggregates hourly totals and user totals, but does not assert user-hour counts
-    // until the grouped row endpoint is available; keep hourly totals accurate.
+    for(const item of data?.horas||[])groups.set(item.hora,{...item,byName:item.byName || {}})
     return [...groups.values()]
   },[data])
   const chartMax=Math.max(1,...hours.map(x=>x.paletes))
@@ -192,11 +190,8 @@ export default function FarolOperacional() {
       </section>
     </div>}
     {data&&tab==='horas'&&<section className="farol-panel farol-wide">
-      <header><div><h2>Produtividade horária</h2><small>Consolidação da operação por hora</small></div></header>
-      <div className="farol-table-toolbar"><span>A consulta por operador/hora está em validação. Os totais por hora abaixo são consolidados.</span>
-        <div className="farol-segments">{[['paletes','Paletes'],['itens','Itens'],['unidades','Unidades']].map(([key,label])=><button key={key} type="button" className={metric===key?'is-active':''} onClick={()=>setMetric(key)}>{label}</button>)}</div></div>
-      <div className="farol-scroll-table"><table><thead><tr><th>Horário</th><th>Paletes</th><th>Itens</th><th>Unidades</th></tr></thead>
-        <tbody>{hours.map(h=><tr key={h.hora}><td>{hourLabel(h.hora)}</td><td>{formatNumber(h.paletes)}</td><td>{formatNumber(h.itens)}</td><td>{formatNumber(h.unidades)}</td></tr>)}</tbody></table></div>
+      <header><div><h2>Produtividade horária</h2><small>Quantidade de paletes, itens e unidades por operador e hora</small></div></header>
+      <HourGrid rows={ranking} hours={hours} metric={metric} onMetric={setMetric}/>
     </section>}
     {data&&tab==='equipe'&&<section className="farol-panel farol-wide">
       <header><div><h2>Ranking completo</h2><small>Indicadores individuais de separação</small></div>
