@@ -32,3 +32,6 @@ jobs:
 
       - name: Validate Farol API module
         run: node --check api/farol/index.js
+
+      - name: Verify WMS cron identity
+        run: node --test api/_lib/wms-cron-auth.test.mjs
