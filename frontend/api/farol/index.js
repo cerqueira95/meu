@@ -151,7 +151,7 @@ export default async function handler(req, res) {
                   TRIM(palete) AS palete, MIN(inicio_texto) AS inicio, MAX(fim_texto) AS fim,
                   COUNT(*)::int AS itens, COALESCE(SUM(quantidade),0)::float AS unidades
           FROM wms_item_registros
-          WHERE data_ref BETWEEN ${inicio}::date AND ${fim}::date
+          WHERE data_ref BETWEEN (${inicio}::date - 1) AND (${fim}::date + 1)
             AND NULLIF(TRIM(mapa), '') IS NOT NULL
             AND NULLIF(TRIM(palete), '') IS NOT NULL
             AND NULLIF(TRIM(usuario_login),'') IS NOT NULL
