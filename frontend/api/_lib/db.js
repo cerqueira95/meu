@@ -64,6 +64,10 @@ export function sql(strings, ...values) {
   return getClient()(strings, ...values)
 }
 
+export function withTransaction(callback) {
+  return getClient().begin(callback)
+}
+
 export function hasDatabaseConnection() {
   return Boolean(getConnectionString())
 }
