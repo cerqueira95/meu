@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     const dates = [yesterday, today]
 
     const collections = await sql`
-      SELECT data_ref, status
+      SELECT data_ref, status, total_completo, atualizado_em
       FROM wms_tarefa_coletas
       WHERE data_ref IN (${yesterday}::date, ${today}::date)
     `
@@ -51,6 +51,7 @@ export default async function handler(req, res) {
         status: 'ok',
         skipped: true,
         dates,
+        coletas: collections.map(item=>({data:isoDate(item.data_ref), totalCompleto:Number(item.total_completo||0), atualizadoEm:item.atualizado_em})),
         message: 'Coletas D-1 e D0 das tarefas WMS já concluídas.',
       })
     }
