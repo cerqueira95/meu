@@ -42,13 +42,13 @@ export default async function handler(req, res) {
     // No fechamento noturno, ignoramos esse atalho e consultamos o WMS outra vez.
     const [rateio, item] = await Promise.all([
       sql`
-        SELECT status
+        SELECT status, total_registros, coletado_em
         FROM wms_rateio_coletas
         WHERE data_ref = ${date}
         LIMIT 1
       `,
       sql`
-        SELECT status
+        SELECT status, total_registros, coletado_em
         FROM wms_item_coletas
         WHERE data_ref = ${date}
         LIMIT 1
@@ -65,6 +65,9 @@ export default async function handler(req, res) {
         skipped: true,
         fechamento: false,
         date,
+        rateioCount: Number(rateio[0].total_registros || 0),
+        itemCount: Number(item[0].total_registros || 0),
+        coletadoEm: item[0].coletado_em,
         message: 'Coleta de hoje já concluída.',
       })
     }
