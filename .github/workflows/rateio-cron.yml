@@ -1,4 +1,5 @@
 name: Coleta diária WMS
+# Autenticacao temporaria OIDC: a execucao registra o resumo da coleta.
 
 on:
   schedule:
