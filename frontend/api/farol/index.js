@@ -28,15 +28,17 @@ function kind(value) {
   if (key.includes('manobrista')) return 'manobrista'
   return null
 }
-function hourKey(text) {
-  // WMS stores text timestamps in local time; don't silently convert to UTC.
-  const match = String(text || '').match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}):\d{2}/)
-  return match ? match[1] + 'T' + match[2] + ':00' : null
+function minuteKey(text) {
+  const match = String(text || '').match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/)
+  return match ? match[1] + 'T' + match[2] : null
 }
-function inRange(hour, from, to, fromTime, toTime) {
-  if (!hour) return false
-  return hour >= from + 'T' + fromTime.slice(0, 2) + ':00' &&
-    hour <= to + 'T' + toTime.slice(0, 2) + ':00'
+function hourKey(text) {
+  const minute = minuteKey(text)
+  return minute ? minute.slice(0, 13) + ':00' : null
+}
+function inRange(moment, from, to, fromTime, toTime) {
+  if (!moment) return false
+  return moment >= from + 'T' + fromTime && moment <= to + 'T' + toTime
 }
 function operatorName(user, lookup) {
   const key = normalize(user)
@@ -51,6 +53,15 @@ function classifyAndAggregate(palletRows, taskRows, period, lookup) {
   const hours = new Map()
   const users = new Map()
   const tasks = new Map()
+  const userHours = new Map()
+  function addUserHour(hour, user, field, amount = 1) {
+    const key = user.id || user.nome
+    if (!userHours.has(hour)) userHours.set(hour, {})
+    const usersInHour = userHours.get(hour)
+    const record = usersInHour[key] || { paletes: 0, itens: 0, unidades: 0, tarefas: 0 }
+    record[field] += amount
+    usersInHour[key] = record
+  }
   let items = 0
   let units = 0
   const mapToUser = raw => {
@@ -62,7 +73,7 @@ function classifyAndAggregate(palletRows, taskRows, period, lookup) {
   }
   for (const row of palletRows) {
     const hour = hourKey(row.fim)
-    if (!inRange(hour, period.inicio, period.fim, period.horaInicio, period.horaFim)) continue
+    if (!inRange(minuteKey(row.fim), period.inicio, period.fim, period.horaInicio, period.horaFim)) continue
     const user = mapToUser(row)
     const itemCount = Number(row.itens || 0)
     const quantity = Number(row.unidades || 0)
@@ -78,12 +89,15 @@ function classifyAndAggregate(palletRows, taskRows, period, lookup) {
     increment(hours, hour, 'paletes')
     increment(hours, hour, 'itens', itemCount)
     increment(hours, hour, 'unidades', quantity)
+    addUserHour(hour, user, 'paletes')
+    addUserHour(hour, user, 'itens', itemCount)
+    addUserHour(hour, user, 'unidades', quantity)
   }
   for (const row of taskRows) {
     const category = kind(row.tipo_nome)
     if (!category || !STATES.includes(category)) continue
     const hour = hourKey(row.data_alteracao)
-    if (!inRange(hour, period.inicio, period.fim, period.horaInicio, period.horaFim)) continue
+    if (!inRange(minuteKey(row.data_alteracao), period.inicio, period.fim, period.horaInicio, period.horaFim)) continue
     const key = normalize(row.usuario_nome_wms) || 'sem-usuario'
     const mapped = lookup.get(key) || String(row.usuario_nome_wms || 'Sem operador identificado')
     const user = users.get(key) || { id: String(row.usuario_nome_wms || ''), nome: mapped, paletes: 0, itens: 0, unidades: 0, tarefas: 0, primeira: null, ultima: null }
@@ -91,17 +105,18 @@ function classifyAndAggregate(palletRows, taskRows, period, lookup) {
     users.set(key, user)
     tasks.set(category, (tasks.get(category) || 0) + 1)
     increment(hours, hour, 'tarefas')
+    addUserHour(hour, user, 'tarefas')
   }
   return {
     ranking: [...users.values()].sort((a,b)=>b.paletes-a.paletes || b.tarefas-a.tarefas || a.nome.localeCompare(b.nome,'pt-BR')),
-    horas: [...hours.values()].sort((a,b)=>a.hora.localeCompare(b.hora)),
+    horas: [...hours.values()].sort((a,b)=>a.hora.localeCompare(b.hora)).map(row=>({...row, byName:userHours.get(row.hora)||{}})),
     tiposTarefas: Object.fromEntries(STATES.map(k => [k, tasks.get(k) || 0])),
     resumo: {
       paletes: [...users.values()].reduce((sum,u)=>sum+u.paletes,0),
       itens: items,
       unidades: units,
       operadores: [...users.values()].filter(u=>u.paletes>0).length,
-      tarefas: taskRows.filter(row => kind(row.tipo_nome) && inRange(hourKey(row.data_alteracao),period.inicio,period.fim,period.horaInicio,period.horaFim)).length,
+      tarefas: taskRows.filter(row => kind(row.tipo_nome) && inRange(minuteKey(row.data_alteracao),period.inicio,period.fim,period.horaInicio,period.horaFim)).length,
     },
   }
 }
@@ -154,6 +169,9 @@ export default async function handler(req, res) {
                    WHERE data_ref BETWEEN ${inicio}::date AND ${fim}::date AND status_id=1
                    LIMIT 25000`
       : []
+    if (palletRows.length >= 35000 || taskRows.length >= 25000) {
+      return res.status(422).json({message:'Período com muitos registros. Reduza o intervalo para garantir indicadores completos.'})
+    }
     const lookup = new Map(mappedUsers.filter(r=>r.login).map(r=>[normalize(r.login),r.nome]))
     const analysis = classifyAndAggregate(palletRows, taskRows, periodo, lookup)
     const latest = latestCollections[0] || null
