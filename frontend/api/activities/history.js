@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs'
 import { sql } from '../_lib/db.js'
 import { getSessionUser } from '../_lib/session.js'
 import { ensureActivitiesSchema, serializeActivityBatch } from '../_lib/activities.js'
+import { resolveActivityQuantityInfo } from '../_lib/activity-quantity.js'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -97,7 +98,7 @@ export default async function handler(req, res) {
 }
 
 async function exportReport(res, from, to) {
-  const [activityRows, activityTotals, escalonadaRows, wmsRows] = await Promise.all([
+  const [activityRows, activityLines, escalonadaRows, wmsRows] = await Promise.all([
     sql`
       SELECT DISTINCT l.atividade_chave AS chave, l.atividade_nome AS nome
       FROM atividade_lancamentos l
@@ -106,22 +107,18 @@ async function exportReport(res, from, to) {
     `,
     sql`
       SELECT
-        p.usuario_id,
-        MAX(p.usuario_nome) AS usuario_nome,
-        l.atividade_chave,
-        MAX(l.atividade_nome) AS atividade_nome,
-        SUM(
-          COALESCE(NULLIF((l.detalhes->>'quantidade_calculo')::numeric, 0), NULLIF(ic.qtd_itens, 0), 1)
-          * COALESCE(p.valor_unitario, l.valor_unitario, 0)
-        )::numeric AS valor
+        l.id, p.usuario_id, p.usuario_nome,
+        l.atividade_chave, l.atividade_nome,
+        l.detalhes, l.observacao,
+        COALESCE(p.valor_unitario, l.valor_unitario, 0)::numeric AS valor_unitario,
+        COALESCE(
+          (SELECT json_agg(i.opcao_nome ORDER BY i.id)
+           FROM atividade_lancamento_itens i WHERE i.lancamento_id = l.id),
+          '[]'::json
+        ) AS itens
       FROM atividade_lancamentos l
       INNER JOIN atividade_lancamento_participantes p ON p.lancamento_id = l.id
-      LEFT JOIN (
-        SELECT lancamento_id, COUNT(*)::numeric AS qtd_itens
-        FROM atividade_lancamento_itens GROUP BY lancamento_id
-      ) ic ON ic.lancamento_id = l.id
       WHERE l.status = 'aprovado' AND l.data_atividade BETWEEN ${from}::date AND ${to}::date
-      GROUP BY p.usuario_id, l.atividade_chave
     `,
     sql`
       SELECT usuario_id, MAX(usuario_nome) AS usuario_nome, SUM(incentivo)::numeric AS valor
@@ -144,6 +141,24 @@ async function exportReport(res, from, to) {
       GROUP BY COALESCE(e.usuario_id, u.id)
     `,
   ])
+
+  // Soma cada lançamento pelo volume original e pelo valor unitário histórico
+  // de cada participante, inclusive quando a quantidade antiga estava no texto.
+  const totals = new Map()
+  for (const row of activityLines) {
+    const quantity = resolveActivityQuantityInfo(row).quantidade
+    const amount = money(quantity * Number(row.valor_unitario || 0))
+    const key = `${row.usuario_id}:${row.atividade_chave}`
+    const old = totals.get(key)
+    totals.set(key, {
+      usuario_id: row.usuario_id,
+      usuario_nome: row.usuario_nome,
+      atividade_chave: row.atividade_chave,
+      atividade_nome: row.atividade_nome,
+      valor: money((old?.valor || 0) + amount),
+    })
+  }
+  const activityTotals = [...totals.values()]
 
   const activityMap = new Map(activityRows.map((row) => [row.chave, row.nome]))
   for (const row of activityTotals) if (!activityMap.has(row.atividade_chave)) activityMap.set(row.atividade_chave, row.atividade_nome)
