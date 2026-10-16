@@ -97,6 +97,12 @@ export default function ActivityHistoryScreen({ currentUser }) {
                 <strong>{money(isAdmin ? batch.valor_grupo : batch.valor_individual)}</strong>
               </div>
               <div className="history-meta">
+                {(batch.atividade_chave === 'selo_vermelho' || batch.atividade_chave?.startsWith('repack_')) && (
+                  <span><b>Quantidade considerada:</b> {batch.quantidade_calculo} {batch.atividade_chave === 'selo_vermelho' ? 'PLT(s)' : 'caixa(s)'}</span>
+                )}
+                {batch.quantidade_pendente_conferencia && (
+                  <span className="history-reason"><b>Atenção:</b> quantidade de lançamento antigo precisa de conferência.</span>
+                )}
                 <span><b>Participantes:</b> {batch.participantes.map((p) => p.usuario_nome).join(', ') || '—'}</span>
                 {batch.status === 'aprovado' ? <span><b>Aprovado por:</b> {batch.aprovado_por_nome || '—'} • {dateTime(batch.aprovado_em)}</span> : <span><b>Reprovado por:</b> {batch.reprovado_por_nome || '—'} • {dateTime(batch.reprovado_em)}</span>}
                 {batch.status === 'reprovado' && batch.motivo_reprovacao && <span className="history-reason"><b>Motivo:</b> {batch.motivo_reprovacao}</span>}
