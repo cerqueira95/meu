@@ -32,7 +32,7 @@ export function validateCollectorPayload(payload) {
       const entries = Object.entries(original)
       if (entries.length < 3 || entries.length > 100) throw Error('Número de colunas inválido: ' + tipo)
       const dados = Object.fromEntries(entries.map(([field, value]) => [field, String(value ?? '').trim()]))
-      if ((tipo === 'entradas_saidas' && (!dados[key] || !(dados.PLACA || dados.PLACA_CARRETA_ENTRADA))) || (tipo === 'movimentacoes' && !(dados[key] || dados.PLACA || dados.PLACA_CARRETA_ENTRADA))) throw Error('Linha sem documento ou placa: ' + tipo)
+      if ((tipo === 'entradas_saidas' && !(dados.PLACA || dados.PLACA_CARRETA_ENTRADA)) || (tipo === 'movimentacoes' && !(dados[key] || dados.PLACA || dados.PLACA_CARRETA_ENTRADA))) throw Error('Linha sem identificação suficiente: ' + tipo)
       const assinatura = canonicalHash(dados)
       if (!seen.has(assinatura)) { seen.add(assinatura); rows.push({ dados, assinatura }) }
     }
@@ -127,4 +127,10 @@ export async function synchronizeLogan({ now = new Date() } = {}) {
   } finally {
     collecting = false
   }
+}
+
+
+export async function persistCollectorPayload(payload, period) {
+  const snapshots = validateCollectorPayload(payload)
+  return withTransaction(tx => persist(tx, snapshots, period))
 }

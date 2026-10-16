@@ -196,11 +196,27 @@ export default function CartaControleTma() {
     setRetornoSync('')
     setErroSync('')
     try {
-      const response = await api.post('/api/logan/sincronizar')
-      setRetornoSync(response.message + ' Novos: ' + response.inseridos + '. Repetidos ignorados: ' + response.ignorados + '.')
-      setRevision(n => n + 1)
+      const request = await api.post('/api/logan/sincronizar')
+      setRetornoSync(request.message)
+      for (let i = 0; i < 55; i++) {
+        await new Promise(resolve => setTimeout(resolve, 2200))
+        const state = await api.get('/api/logan/sincronizar?id=' + request.id)
+        if (state.estado === 'concluido') {
+          const result = state.resultado || {}
+          setRetornoSync('Coleta concluída. Novos registros: ' + (result.inseridos || 0) +
+            '. Registros repetidos ignorados: ' + (result.ignorados || 0) + '.')
+          setRevision(n => n + 1)
+          return
+        }
+        if (state.estado === 'erro') {
+          setErroSync(state.mensagem || 'A coleta falhou. Confira a sessão autenticada do Logan.')
+          return
+        }
+      }
+      setRetornoSync('A coleta continua aguardando o agente Windows. Solicitação ' + request.id +
+        '. Mantenha o computador e o Chrome do Logan abertos e atualize o painel mais tarde.')
     } catch (err) {
-      setErroSync(err.message || 'Falha ao tentar sincronizar o Logan.')
+      setErroSync(err.message || 'Falha ao solicitar a sincronização do Logan.')
     } finally {
       setSincronizando(false)
     }
