@@ -101,8 +101,6 @@ function JustificativaModal({ linha, onClose, onSaved }) {
             </button>
           </div>
         </form>
-        {retornoSync && <div className="logan-alert logan-sync-success" role="status">{retornoSync}</div>}
-    {erroSync && <div className="logan-alert logan-alert-warning" role="alert">{erroSync}</div>}
     {erro && <div role="alert" className="logan-alert logan-alert-error">{erro}</div>}
         <div className="logan-history-title"><h3>Histórico de alterações</h3><span>{historico.length} registro(s)</span></div>
         {loading ? <p className="logan-muted">Carregando histórico…</p> : historico.length
@@ -198,9 +196,14 @@ export default function CartaControleTma() {
     try {
       const request = await api.post('/api/logan/sincronizar')
       setRetornoSync(request.message)
+      setEstadoColetor(prev => ({ ...(prev || {}), ultimaSolicitacao: {
+        id: request.id, estado: request.estado || 'pendente',
+        mensagem: request.message, solicitadoEm: new Date().toISOString(),
+      } }))
       for (let i = 0; i < 55; i++) {
         await new Promise(resolve => setTimeout(resolve, 2200))
         const state = await api.get('/api/logan/sincronizar?id=' + request.id)
+        setEstadoColetor(prev => ({ ...(prev || {}), ultimaSolicitacao: state }))
         if (state.estado === 'concluido') {
           const result = state.resultado || {}
           setRetornoSync('Coleta concluída. Novos registros: ' + (result.inseridos || 0) +
@@ -247,6 +250,9 @@ export default function CartaControleTma() {
   const pages = Math.max(1, Math.ceil(filtered.length / porPagina))
   const currentPage = Math.min(pagina, pages)
   const shown = filtered.slice((currentPage - 1) * porPagina, currentPage * porPagina)
+  const lastSync = estadoColetor?.ultimaSolicitacao || null
+  const lastDetails = lastSync?.resultado && typeof lastSync.resultado === 'object'
+    ? lastSync.resultado : null
   const total = data?.resumo?.total || 0
   const semJust = data?.semJustificativa || 0
 
@@ -284,16 +290,31 @@ export default function CartaControleTma() {
       </div>
     </div>
 
+    {retornoSync && <div className="logan-alert logan-sync-success" role="status">{retornoSync}</div>}
+    {erroSync && <div className="logan-alert logan-alert-warning" role="alert">{erroSync}</div>}
     {erro && <div role="alert" className="logan-alert logan-alert-error">{erro}</div>}
     {loading && <p role="status" className="logan-loading">Consultando registros da operação…</p>}
     {data && <>
       <div className="logan-sync-strip">
         <div className="logan-sync-info"><span className="logan-sync-dot" />
-          <span><strong>Última carga:</strong> {formatTimestamp(data.ultimaImportacao)}</span>
+          <span><strong>Últimos dados novos:</strong> {formatTimestamp(data.ultimaImportacao)}</span>
           <span className="logan-sync-separator">·</span>
           <span>Horário da Bahia</span>
         </div>
-        <span className="logan-sync-tag">Coleta automática pendente</span>
+        <span className="logan-sync-tag">Cron automático ainda desativado</span>
+        {lastSync && <div className={'logan-last-sync logan-last-sync-' + lastSync.estado} role="status">
+          <strong>Última consulta ao Logan:</strong> {formatTimestamp(lastSync.concluidoEm || lastSync.solicitadoEm)}
+          {' · '}
+          {lastSync.estado === 'concluido'
+            ? 'Concluída'
+            : lastSync.estado === 'erro' ? 'Falhou'
+            : lastSync.estado === 'executando' ? 'Em execução' : 'Aguardando agente'}
+          {lastSync.estado === 'concluido' && lastDetails && <>
+            {' · '}<strong>{lastDetails.inseridos ?? 0} novos</strong>
+            {' · '}{lastDetails.ignorados ?? 0} repetidos ignorados
+          </>}
+          {lastSync.estado === 'erro' && lastSync.mensagem && <> · {lastSync.mensagem}</>}
+        </div>}
         {estadoColetor && !estadoColetor.disponivel && <span className="logan-collector-note">
           A captura autenticada ainda não está conectada. O botão informará essa pendência.
         </span>}
