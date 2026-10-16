@@ -21,3 +21,15 @@ jobs:
             --max-time 300 \
             -H "Authorization: Bearer $CRON_SECRET" \
             https://warehouse-orion.onrender.com/api/cron/rateio
+
+      - name: Coletar tarefas WMS (D-1 e D0)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET"
+          curl --fail --silent --show-error \
+            --retry 2 \
+            --retry-delay 15 \
+            --max-time 300 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://warehouse-orion.onrender.com/api/cron/tarefas

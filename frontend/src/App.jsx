@@ -5,7 +5,7 @@ import HomeNewsPreview from './components/HomeNewsPreview.jsx'
 import UserAvatar from './components/UserAvatar.jsx'
 import ProfilePhotoModal, { compressProfilePhoto } from './components/ProfilePhotoModal.jsx'
 import WmsSettingsScreen from './components/WmsSettingsScreen.jsx'
-import CartaControleTma from './components/CartaControleTma.jsx'
+import FarolOperacional from './components/FarolOperacional.jsx'
 import EscalonadaScreen from './components/EscalonadaScreen.jsx'
 import EscalonadaAdminScreen from './components/EscalonadaAdminScreen.jsx'
 import ActivitiesScreen from './components/ActivitiesScreen.jsx'
@@ -1557,7 +1557,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     { id: 'alterar-senha', label: 'Alterar senha', icon: 'configuracoes' },
     ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: 'usuarios' }] : []),
     ...(isAdmin ? [{ id: 'relatorios', label: 'Relatórios', icon: 'relatorios' }] : []),
-    ...(isAdmin ? [{ id: 'carta-tma', label: 'Carta Controle TMA', icon: 'relatorios' }] : []),
+    ...(isAdmin ? [{ id: 'farol', label: 'Farol Operacional', icon: 'relatorios' }] : []),
   ]
 
   useEffect(() => {
@@ -1634,7 +1634,7 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
     escalonada: { title: 'Minha Escalonada', description: 'Seu resultado diário e incentivo acumulado.', icon: 'escalonada' },
     usuarios: { title: 'Usuários', description: 'Cadastros, perfis e permissões de acesso.', icon: 'usuarios' },
     relatorios: { title: 'Relatórios', description: 'Indicadores consolidados e exportações.', icon: 'relatorios' },
-    'carta-tma': { title: 'Carta Controle TMA', description: 'Indicadores do Logan e justificativas.', icon: 'relatorios' },
+    'farol': { title: 'Farol Operacional', description: 'Separação e carregamento WMS por período e operador.', icon: 'relatorios' },
     'aprovar-atividades': { title: 'Aprovar atividades', description: 'Fila central para revisar, editar, aprovar ou reprovar lançamentos.', icon: 'atividades' },
     'valores-atividades': { title: 'Valores das atividades', description: 'Configuração dos valores unitários das atividades.', icon: 'configuracoes' },
     'tetos-carteira': { title: 'Tetos da carteira', description: 'Limite mensal individual dos ajudantes.', icon: 'carteira' },
@@ -2014,8 +2014,8 @@ function HomeScreen({ usuario, onLogout, onUserChange }) {
             <ChangePasswordScreen onChanged={() => storeQuickAccess(null)} />
           ) : activeSection === 'relatorios' && isAdmin ? (
             <EscalonadaAdminScreen />
-          ) : activeSection === 'carta-tma' && isAdmin ? (
-            <CartaControleTma />
+          ) : activeSection === 'farol' && isAdmin ? (
+            <FarolOperacional />
           ) : activeSection === 'configuracoes' && isAdmin ? (
             <WmsSettingsScreen />
           ) : (
